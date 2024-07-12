@@ -39,36 +39,46 @@
    uvicorn fastmlx:app --reload --workers 0
    ```
 
-### Running with Multiple Workers (Parallel Processing)
+   > [!WARNING] 
+   > The `--reload` flag should not be used in production. It is only intended for development purposes.
 
-For improved performance and parallel processing capabilities, you can specify the number of worker processes. This is particularly useful for handling multiple requests simultaneously.
+   ### Running with Multiple Workers (Parallel Processing)
 
-```bash
-fastmlx --workers 4 
-```
-or
+   For improved performance and parallel processing capabilities, you can specify either the absolute number of worker processes or the fraction of CPU cores to use. This is particularly useful for handling multiple requests simultaneously.
 
-```bash
-uvicorn fastmlx:app --workers 4
-```
+   You can also set the `FASTMLX_NUM_WORKERS` environment variable to specify the number of workers or the fraction of CPU cores to use. `workers` defaults to 2 if not passed explicitly or set via the environment variable.
 
-Replace `4` with the desired number of worker processes. The optimal number depends on your system's resources and the specific requirements of your application. 
+   In order of precedence (highest to lowest), the number of workers is determined by the following:
+   - Explicitly passed as a command-line argument 
+     - `--workers 4` will set the number of workers to 4
+     - `--workers 0.5` will set the number of workers to half the number of CPU cores available (minimum of 1)
+   - Set via the `FASTMLX_NUM_WORKERS` environment variable
+   - Default value of 2
 
-You can also set the `FASTMLX_NUM_WORKERS` environment variable to specify the number of workers. `workers` defaults to 2 or the number of CPU cores minus 4, whichever is higher, if not passed explicitly or set via the environment variable.
+   To use all available CPU cores, set the value to **1.0**.
 
-#### Notes:
-- The `--reload` flag is useful during development as it automatically reloads the server when code changes are detected. However, it should not be used in production.
-- When using multiple workers, the `--reload` flag is not compatible and should be omitted.
-- The number of workers should typically not exceed the number of CPU cores available on your machine for optimal performance.
+   Example:
+   ```bash
+   fastmlx --workers 4 
+   ```
+   or
 
-### Considerations for Multi-Worker Setup
+   ```bash
+   uvicorn fastmlx:app --workers 4
+   ```
 
-1. **Stateless Application**: Ensure your FastMLX application is stateless, as each worker process operates independently.
-2. **Database Connections**: If your app uses a database, make sure your connection pooling is configured to handle multiple workers.
-3. **Resource Usage**: Monitor your system's resource usage to find the optimal number of workers for your specific hardware and application needs. Additionally, you can remove any unused models using the delete model endpoint.
-4. **Load Balancing**: When running with multiple workers, incoming requests are automatically load-balanced across the worker processes.
+   > [!NOTE]
+   > - `--reload` flag is not compatible with multiple workers  
+   > - The number of workers should typically not exceed the number of CPU cores available on your machine for optimal performance.
 
-By leveraging multiple workers, you can significantly improve the throughput and responsiveness of your FastMLX application, especially under high load conditions.
+   ### Considerations for Multi-Worker Setup
+
+   1. **Stateless Application**: Ensure your FastMLX application is stateless, as each worker process operates independently.
+   2. **Database Connections**: If your app uses a database, make sure your connection pooling is configured to handle multiple workers.
+   3. **Resource Usage**: Monitor your system's resource usage to find the optimal number of workers for your specific hardware and application needs. Additionally, you can remove any unused models using the delete model endpoint.
+   4. **Load Balancing**: When running with multiple workers, incoming requests are automatically load-balanced across the worker processes.
+
+   By leveraging multiple workers, you can significantly improve the throughput and responsiveness of your FastMLX application, especially under high load conditions.
 
 3. **Making API Calls**
 
