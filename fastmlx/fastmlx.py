@@ -274,7 +274,13 @@ def run():
         default=False,
         help="Enable auto-reload of the server. Only works when 'workers' is set to None.",
     )
-    parser.add_argument("--workers", type=int, default=2, help="Number of workers")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=os.getenv("FASTMLX_NUM_WORKERS", max(2, os.cpu_count() - 4)),
+        help="""Number of workers. Overrides the `FASTMLX_NUM_WORKERS` env variable. 
+        Defaults to the `FASTMLX_NUM_WORKERS` env variable if set, or to 2 or the number of CPU cores available minus 4, whichever is higher.""",
+    )
     args = parser.parse_args()
 
     setup_cors(app, args.allowed_origins)

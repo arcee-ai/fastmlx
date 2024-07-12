@@ -52,9 +52,11 @@ or
 uvicorn fastmlx:app --workers 4
 ```
 
-Replace `4` with the desired number of worker processes. The optimal number depends on your system's resources and the specific requirements of your application.
+Replace `4` with the desired number of worker processes. The optimal number depends on your system's resources and the specific requirements of your application. 
 
-Notes:
+You can also set the `FASTMLX_NUM_WORKERS` environment variable to specify the number of workers. `workers` defaults to 2 or the number of CPU cores minus 4, whichever is higher, if not passed explicitly or set via the environment variable.
+
+#### Notes:
 - The `--reload` flag is useful during development as it automatically reloads the server when code changes are detected. However, it should not be used in production.
 - When using multiple workers, the `--reload` flag is not compatible and should be omitted.
 - The number of workers should typically not exceed the number of CPU cores available on your machine for optimal performance.
