@@ -90,12 +90,23 @@ app = FastAPI()
 
 # Custom type function
 def int_or_float(value):
-    for type_ in (int, float):
+    try:
+        return int(value)
+    except ValueError:
         try:
-            return type_(value)
+            return float(value)
         except ValueError:
-            continue
-    raise argparse.ArgumentTypeError(f"{value} is not an int or float")
+            raise argparse.ArgumentTypeError(f"{value} is not an int or float")
+
+
+def calculate_default_workers(workers: int = 2) -> int:
+    """Calculate the default number of workers based on environment variable."""
+    if num_workers_env := os.getenv("FASTMLX_NUM_WORKERS"):
+        try:
+            workers = int(num_workers_env)
+        except ValueError:
+            workers = max(1, int(os.cpu_count() * float(num_workers_env)))
+    return workers
 
 
 # Add CORS middleware
@@ -285,17 +296,10 @@ def run():
         help="Enable auto-reload of the server. Only works when 'workers' is set to None.",
     )
 
-    _default_workers = 2
-    if _num_workers_env := os.getenv("FASTMLX_NUM_WORKERS"):
-        try:
-            _default_workers = int(_num_workers_env)
-        except ValueError:
-            _default_workers = max(1, int(os.cpu_count() * float(_num_workers_env)))
-
     parser.add_argument(
         "--workers",
         type=int_or_float,
-        default=_default_workers,
+        default=calculate_default_workers,
         help="""Number of workers. Overrides the `FASTMLX_NUM_WORKERS` env variable. 
         Can be either an int or a float. 
         If an int, it will be the number of workers to use.
