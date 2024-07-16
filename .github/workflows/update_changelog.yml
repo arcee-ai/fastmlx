@@ -28,31 +28,50 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        set -x  # Enable verbose output
+
+        echo "Configuring Git..."
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        # Print current directory and list files
+
+        echo "Current directory and files:"
         pwd
         ls -la
-        # Print Git status and current branch
+
+        echo "Git status and branch:"
         git status
         git branch
-        # Ensure we're on the correct branch
+
+        echo "GitHub event name: ${{ github.event_name }}"
+        echo "GitHub head ref: ${{ github.head_ref }}"
+        echo "GitHub ref name: ${{ github.ref_name }}"
+
+        echo "Checking out correct branch..."
         if [ "${{ github.event_name }}" = "pull_request" ]; then
-          git checkout -b ${{ github.head_ref }}
+          git checkout -b "${{ github.head_ref }}" || echo "Failed to create new branch"
         else
-          git checkout ${{ github.ref_name }}
+          git checkout "${{ github.ref_name }}" || echo "Failed to checkout branch"
         fi
-        # Run the update script
+
+        echo "Current branch after checkout:"
+        git branch
+
+        echo "Running update script..."
         python update_changelog.py
-        # Check for changes and commit if necessary
+
+        echo "Checking for changes..."
         git add docs/changelog.md
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
+          echo "Changes detected, committing..."
           git commit -m "Update changelog for latest release"
-          git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          echo "Pushing changes..."
+          git push origin HEAD:"${{ github.head_ref || github.ref_name }}" || echo "Failed to push changes"
         fi
 
+        echo "Final Git status:"
+        git status
 
   update-changelog:
     if: github.event_name == 'release'
