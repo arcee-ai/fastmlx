@@ -28,7 +28,7 @@ load_dotenv()
 # GitHub repository details
 REPO_OWNER = "Blaizzy"
 REPO_NAME = "fastmlx"
-GITHUB_TOKEN = os.getenv("UPDATE_CHANGELOG_TOKEN")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 # File paths
 CHANGELOG_PATH = "docs/changelog.md"

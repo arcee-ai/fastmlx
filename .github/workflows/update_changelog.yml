@@ -26,7 +26,7 @@ jobs:
         pip install requests python-dotenv semver
     - name: Test Changelog Update
       env:
-        GITHUB_TOKEN: ${{ secrets.UPDATE_CHANGELOG_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         python update_changelog.py
         if [[ -n $(git status --porcelain) ]]; then
@@ -50,7 +50,7 @@ jobs:
         pip install requests python-dotenv
     - name: Update Changelog
       env:
-        GITHUB_TOKEN: ${{ secrets.UPDATE_CHANGELOG_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: python update_changelog.py
     - name: Commit changes
       run: |
