@@ -3,6 +3,7 @@ site_description: FastMLX is a high performance production ready API to host MLX
 site_author: Blaizzy
 site_url: https://Blaizzy.github.io/fastmlx
 repo_url: https://github.com/Blaizzy/fastmlx
+edit_uri: edit/main/docs/  # Allows users to edit the page directly on GitHub
 
 copyright: "Copyright &copy; 2024 - 2024 Prince Canuma"
 
@@ -28,8 +29,11 @@ theme:
         - navigation.instant
         - navigation.tracking
         - navigation.top
+        - navigation.footer  # Adds a "Next" and "Previous" navigation to the footer
         - search.highlight
         - search.share
+        - content.code.copy  # Adds a copy button to code blocks
+        - content.action.edit  # Adds an edit button to pages
     custom_dir: "docs/overrides"
     font:
         text: Google Sans
@@ -64,6 +68,25 @@ markdown_extensions:
     - toc:
           permalink: true
 
+extra:
+    social:
+        - icon: fontawesome/brands/github
+          link: https://github.com/Blaizzy
+        - icon: fontawesome/brands/twitter
+          link: https://twitter.com/Prince_Canuma
+    version:
+        provider: mike  # Uncomment if you decide to use mike for versioning
+    consent:
+        title: Cookie consent
+        description: >-
+          We use cookies to recognize your repeated visits and preferences, as well
+          as to measure the effectiveness of our documentation and whether users
+          find what they're searching for. With your consent, you're helping us to
+          make our documentation better.
+
+extra_css:
+    - stylesheets/extra.css
+
 # extra:
 #     analytics:
 #         provider: google
@@ -73,10 +96,10 @@ nav:
     - Home: index.md
     - Installation: installation.md
     - Usage: usage.md
+    - CLI Reference: cli_reference.md
     - Contributing: contributing.md
     - Changelog: changelog.md
     - Report Issues: https://github.com/Blaizzy/fastmlx/issues
     - Examples:
-        - examples/intro.ipynb
-    - API Reference:
-          - FastMLX module: fastmlx.md
+        - Introduction: examples/intro.ipynb
+    - API Reference: fastmlx.md

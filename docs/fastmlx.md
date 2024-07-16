@@ -1,4 +1,4 @@
 
-# fastmlx module
+# FastMLX Module
 
 ::: fastmlx
