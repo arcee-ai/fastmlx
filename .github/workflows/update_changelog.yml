@@ -30,16 +30,29 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git checkout ${{ github.head_ref || github.ref_name }}
-        python update_changelog.py
-        git add docs/changelog.md
-        git commit -m "Update changelog for latest release" || echo "No changes to commit"
-        git push
-        if [[ -n $(git status --porcelain) ]]; then
-          echo "Changelog was updated. Script is working correctly."
+        # Print current directory and list files
+        pwd
+        ls -la
+        # Print Git status and current branch
+        git status
+        git branch
+        # Ensure we're on the correct branch
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          git checkout -b ${{ github.head_ref }}
         else
-          echo "No changes to changelog. Please check if this is expected."
+          git checkout ${{ github.ref_name }}
         fi
+        # Run the update script
+        python update_changelog.py
+        # Check for changes and commit if necessary
+        git add docs/changelog.md
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update changelog for latest release"
+          git push origin HEAD:${{ github.head_ref || github.ref_name }}
+        fi
+
 
   update-changelog:
     if: github.event_name == 'release'
