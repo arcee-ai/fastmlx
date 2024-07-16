@@ -328,12 +328,6 @@ async def remove_model(model_name: str):
 
 
 def run():
-    """
-    Run the FastMLX API server.
-
-    This function sets up the argument parser, configures the server,
-    and starts the uvicorn server with the specified options.
-    """
     parser = argparse.ArgumentParser(description="FastMLX API server")
     parser.add_argument(
         "--allowed-origins",
