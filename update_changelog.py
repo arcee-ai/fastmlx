@@ -20,7 +20,6 @@ import re
 from datetime import datetime
 
 import requests
-import semver
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -30,7 +29,6 @@ load_dotenv()
 REPO_OWNER = "Blaizzy"
 REPO_NAME = "fastmlx"
 GITHUB_TOKEN = os.getenv("UPDATE_CHANGELOG_TOKEN")
-
 
 # File paths
 CHANGELOG_PATH = "docs/changelog.md"
@@ -49,8 +47,13 @@ def get_releases():
 
 
 def parse_version(version_string):
-    """Parse version string to semver object, handling 'v' prefix."""
-    return semver.VersionInfo.parse(version_string.lstrip("v"))
+    """Parse version string to tuple, handling 'v' prefix."""
+    return tuple(map(int, version_string.lstrip("v").split(".")))
+
+
+def compare_versions(v1, v2):
+    """Compare two version tuples."""
+    return (v1 > v2) - (v1 < v2)
 
 
 def create_issue_link(issue_number):
@@ -101,7 +104,6 @@ def format_release_notes(body):
                 cleaned_line = cleaned_line.replace("* ", "- ")
                 formatted_notes.append(cleaned_line)
         else:
-
             formatted_notes.append(line)
 
     # Replace issue numbers with clickable links
@@ -135,7 +137,7 @@ def update_changelog(releases):
         if version in existing_versions:
             continue
 
-        print(f"Adding new version: {version}")  # Debug print
+        print(f"Adding new version: {'.'.join(map(str, version))}")  # Debug print
 
         release_date = datetime.strptime(
             release["published_at"], "%Y-%m-%dT%H:%M:%SZ"
