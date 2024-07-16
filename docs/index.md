@@ -1,18 +1,76 @@
-# Welcome to fastmlx
+# Welcome to FastMLX
+
+[![PyPI version](https://img.shields.io/pypi/v/fastmlx.svg)](https://pypi.python.org/pypi/fastmlx)
+[![Conda version](https://img.shields.io/conda/vn/conda-forge/fastmlx.svg)](https://anaconda.org/conda-forge/fastmlx)
+[![Updates](https://pyup.io/repos/github/Blaizzy/fastmlx/shield.svg)](https://pyup.io/repos/github/Blaizzy/fastmlx)
+
+FastMLX is a high-performance, production-ready API for hosting MLX models, including Vision Language Models (VLMs) and Language Models (LMs). It provides an easy-to-use interface for integrating powerful machine learning capabilities into your applications.
 
 
-[![image](https://img.shields.io/pypi/v/fastmlx.svg)](https://pypi.python.org/pypi/fastmlx)
+## Key Features
 
-[![image](https://pyup.io/repos/github/Blaizzy/fastmlx/shield.svg)](https://pyup.io/repos/github/Blaizzy/fastmlx)
+- **OpenAI-compatible API**: Seamlessly integrate with existing applications that use OpenAI's API.
+- **Dynamic Model Loading**: Load MLX models on-the-fly or use pre-loaded models for optimal performance.
+- **Multiple Model Support**: Compatible with various MLX model architectures.
+- **Image Processing**: Handle both text and image inputs for versatile model interactions.
+- **Efficient Resource Management**: Optimized for high-performance and scalability.
+- **Robust Error Handling**: Designed for reliability in production environments.
+- **Customizable**: Easily extendable to accommodate specific use cases and model types.
 
+## Quick Start
 
-**FastMLX is a high performance production ready API to host MLX models.**
+### Installation
 
+```bash
+pip install fastmlx
+```
 
--   Free software: Apache Software License 2.0
--   Documentation: <https://Blaizzy.github.io/fastmlx>
-    
+### Running the Server
 
-## Features
+Start the FastMLX server:
 
--   TODO
+```bash
+fastmlx
+```
+
+or with multiple workers for improved performance:
+
+```bash
+fastmlx --workers 4
+```
+
+### Making API Calls
+
+Use the API similar to OpenAI's chat completions. Here's a simple example using a Vision Language Model:
+
+```python
+import requests
+import json
+
+url = "http://localhost:8000/v1/chat/completions"
+headers = {"Content-Type": "application/json"}
+data = {
+    "model": "mlx-community/nanoLLaVA-1.5-4bit",
+    "image": "http://images.cocodataset.org/val2017/000000039769.jpg",
+    "messages": [{"role": "user", "content": "What are these"}],
+    "max_tokens": 100
+}
+
+response = requests.post(url, headers=headers, data=json.dumps(data))
+print(response.json())
+```
+
+## Next Steps
+
+- Check out the [Installation](installation.md) guide for detailed setup instructions.
+- Learn more about the API usage in the [Usage](usage.md) section.
+- Explore advanced features and configurations in the [API Reference](api_reference/fastmlx.md).
+- If you're interested in contributing, see our [Contributing](contributing.md) guidelines.
+
+## License
+
+FastMLX is free software, licensed under the Apache Software License 2.0.
+
+For more detailed information and advanced usage, please explore the rest of our documentation. If you encounter any issues or have questions, don't hesitate to [report an issue](https://github.com/Blaizzy/fastmlx/issues) on our GitHub repository.
+
+Happy coding with FastMLX!

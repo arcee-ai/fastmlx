@@ -5,7 +5,7 @@
 To install fastmlx, run this command in your terminal:
 
 ```
-pip install fastmlx
+pip install -U fastmlx
 ```
 
 This is the preferred method to install fastmlx, as it will always install the most recent stable release.

@@ -1,4 +1,9 @@
-"""Main module."""
+"""Main module for FastMLX API server.
+
+This module provides a FastAPI-based server for hosting MLX models,
+including Vision Language Models (VLMs) and Language Models (LMs).
+It offers an OpenAI-compatible API for chat completions and model management.
+"""
 
 import argparse
 import asyncio
@@ -64,11 +69,15 @@ class ModelProvider:
 
 
 class ChatMessage(BaseModel):
+    """Represents a single message in a chat conversation."""
+
     role: str
     content: str
 
 
 class ChatCompletionRequest(BaseModel):
+    """Represents a request for chat completion."""
+
     model: str
     messages: List[ChatMessage]
     image: Optional[str] = Field(default=None)
@@ -78,6 +87,8 @@ class ChatCompletionRequest(BaseModel):
 
 
 class ChatCompletionResponse(BaseModel):
+    """Represents a response from a chat completion request."""
+
     id: str
     object: str = "chat.completion"
     created: int
@@ -88,8 +99,8 @@ class ChatCompletionResponse(BaseModel):
 app = FastAPI()
 
 
-# Custom type function
 def int_or_float(value):
+
     try:
         return int(value)
     except ValueError:
@@ -100,7 +111,6 @@ def int_or_float(value):
 
 
 def calculate_default_workers(workers: int = 2) -> int:
-    """Calculate the default number of workers based on environment variable."""
     if num_workers_env := os.getenv("FASTMLX_NUM_WORKERS"):
         try:
             workers = int(num_workers_env)
@@ -126,6 +136,18 @@ model_provider = ModelProvider()
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def chat_completion(request: ChatCompletionRequest):
+    """
+    Handle chat completion requests for both VLM and LM models.
+
+    Args:
+        request (ChatCompletionRequest): The chat completion request.
+
+    Returns:
+        ChatCompletionResponse: The generated chat completion response.
+
+    Raises:
+        HTTPException: If MLX library is not available.
+    """
     if not MLX_AVAILABLE:
         raise HTTPException(status_code=500, detail="MLX library not available")
 
@@ -250,23 +272,53 @@ async def chat_completion(request: ChatCompletionRequest):
 async def get_supported_models():
     """
     Get a list of supported model types for VLM and LM.
+
+    Returns:
+        JSONResponse: A JSON response containing the supported models.
     """
     return JSONResponse(content=MODELS)
 
 
 @app.get("/v1/models")
 async def list_models():
+    """
+    List all available (loaded) models.
+
+    Returns:
+        dict: A dictionary containing the list of available models.
+    """
     return {"models": await model_provider.get_available_models()}
 
 
 @app.post("/v1/models")
 async def add_model(model_name: str):
+    """
+    Add a new model to the API.
+
+    Args:
+        model_name (str): The name of the model to add.
+
+    Returns:
+        dict: A dictionary containing the status of the operation.
+    """
     model_provider.load_model(model_name)
     return {"status": "success", "message": f"Model {model_name} added successfully"}
 
 
 @app.delete("/v1/models")
 async def remove_model(model_name: str):
+    """
+    Remove a model from the API.
+
+    Args:
+        model_name (str): The name of the model to remove.
+
+    Returns:
+        Response: A 204 No Content response if successful.
+
+    Raises:
+        HTTPException: If the model is not found.
+    """
     model_name = unquote(model_name).strip('"')
     removed = await model_provider.remove_model(model_name)
     if removed:
@@ -276,6 +328,12 @@ async def remove_model(model_name: str):
 
 
 def run():
+    """
+    Run the FastMLX API server.
+
+    This function sets up the argument parser, configures the server,
+    and starts the uvicorn server with the specified options.
+    """
     parser = argparse.ArgumentParser(description="FastMLX API server")
     parser.add_argument(
         "--allowed-origins",
@@ -300,13 +358,13 @@ def run():
         "--workers",
         type=int_or_float,
         default=calculate_default_workers,
-        help="""Number of workers. Overrides the `FASTMLX_NUM_WORKERS` env variable. 
-        Can be either an int or a float. 
+        help="""Number of workers. Overrides the `FASTMLX_NUM_WORKERS` env variable.
+        Can be either an int or a float.
         If an int, it will be the number of workers to use.
         If a float, number of workers will be this fraction of the  number of CPU cores available, with a minimum of 1.
         Defaults to the `FASTMLX_NUM_WORKERS` env variable if set and to 2 if not.
         To use all available CPU cores, set it to 1.0.
-        
+
         Examples:
         --workers 1 (will use 1 worker)
         --workers 1.0 (will use all available CPU cores)

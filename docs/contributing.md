@@ -79,8 +79,7 @@ Ready to contribute? Here's how to set up fastmlx for local development.
 
     ```shell
     $ flake8 fastmlx tests
-    $ python setup.py test or pytest
-    $ tox
+    $ pytest .
     ```
 
     To get flake8 and tox, just pip install them into your virtualenv.
