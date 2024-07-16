@@ -36,6 +36,7 @@ jobs:
         fi
 
   update-changelog:
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
