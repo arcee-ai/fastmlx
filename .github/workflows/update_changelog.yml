@@ -3,16 +3,9 @@ name: Update Changelog
 on:
   release:
     types: [published]
-  push:
-    branches:
-      - main  # or your default branch name
-  pull_request:
-    branches:
-      - main  # or your default branch name
 
 jobs:
-  test-changelog-update:
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+  update-changelog:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -23,24 +16,18 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests python-dotenv semver
-    - name: Test Changelog Update
+        pip install requests python-dotenv
+    - name: Update Changelog
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: python update_changelog.py
+    - name: Commit changes
       run: |
         set -x  # Enable verbose output
 
         echo "Configuring Git..."
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-
-        echo "Current directory and files:"
-        pwd
-        ls -la
-
-        echo "Git status and branch:"
-        git status
-        git branch
 
         echo "GitHub event name: ${{ github.event_name }}"
         echo "GitHub head ref: ${{ github.head_ref }}"
@@ -78,28 +65,3 @@ jobs:
 
         echo "Final Git status:"
         git status
-
-  update-changelog:
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests python-dotenv
-    - name: Update Changelog
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: python update_changelog.py
-    - name: Commit changes
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add docs/changelog.md
-        git commit -m "Update changelog for latest release" || echo "No changes to commit"
-        git push
