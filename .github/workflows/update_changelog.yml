@@ -47,13 +47,15 @@ jobs:
         echo "GitHub ref name: ${{ github.ref_name }}"
 
         echo "Fetching latest changes..."
-        git fetch origin ${{ github.head_ref || github.ref_name }}
+        git fetch origin
 
-        echo "Checking out correct branch..."
+        echo "Checking out and updating branch..."
         if [ "${{ github.event_name }}" = "pull_request" ]; then
-          git checkout -b "${{ github.head_ref }}" || echo "Failed to create new branch"
+          git checkout -B "${{ github.head_ref }}" "origin/${{ github.head_ref }}"
+          git pull origin "${{ github.head_ref }}"
         else
-          git checkout "${{ github.ref_name }}" || echo "Failed to checkout branch"
+          git checkout -B "${{ github.ref_name }}" "origin/${{ github.ref_name }}"
+          git pull origin "${{ github.ref_name }}"
         fi
 
         echo "Current branch after checkout:"
