@@ -1,9 +1,9 @@
 site_name: FastMLX
 site_description: FastMLX is a high performance production ready API to host MLX models.
 site_author: Blaizzy
+repo_name: Blaizzy/fastmlx
 site_url: https://Blaizzy.github.io/fastmlx
 repo_url: https://github.com/Blaizzy/fastmlx
-edit_uri: edit/main/docs/  # Allows users to edit the page directly on GitHub
 
 copyright: "Copyright &copy; 2024 - 2024 Prince Canuma"
 
