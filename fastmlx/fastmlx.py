@@ -299,14 +299,14 @@ def run():
     parser.add_argument(
         "--workers",
         type=int_or_float,
-        default=calculate_default_workers,
-        help="""Number of workers. Overrides the `FASTMLX_NUM_WORKERS` env variable. 
-        Can be either an int or a float. 
+        default=calculate_default_workers(),
+        help="""Number of workers. Overrides the `FASTMLX_NUM_WORKERS` env variable.
+        Can be either an int or a float.
         If an int, it will be the number of workers to use.
         If a float, number of workers will be this fraction of the  number of CPU cores available, with a minimum of 1.
         Defaults to the `FASTMLX_NUM_WORKERS` env variable if set and to 2 if not.
         To use all available CPU cores, set it to 1.0.
-        
+
         Examples:
         --workers 1 (will use 1 worker)
         --workers 1.0 (will use all available CPU cores)
@@ -315,7 +315,6 @@ def run():
     )
 
     args = parser.parse_args()
-
     if isinstance(args.workers, float):
         args.workers = max(1, int(os.cpu_count() * args.workers))
 
