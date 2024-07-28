@@ -64,7 +64,7 @@ print(response.json())
 
 - Check out the [Installation](installation.md) guide for detailed setup instructions.
 - Learn more about the API usage in the [Usage](usage.md) section.
-- Explore advanced features and configurations in the [API Reference](api_reference/fastmlx.md).
+- Explore advanced features and configurations in the [API Reference](endpoints.md).
 - If you're interested in contributing, see our [Contributing](contributing.md) guidelines.
 
 ## License

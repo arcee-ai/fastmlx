@@ -33,7 +33,7 @@ theme:
         - search.highlight
         - search.share
         - content.code.copy  # Adds a copy button to code blocks
-        - content.action.edit  # Adds an edit button to pages
+       
     custom_dir: "docs/overrides"
     font:
         text: Google Sans
@@ -42,9 +42,6 @@ theme:
 plugins:
     - search
     - mkdocstrings
-    - git-revision-date-localized:
-          enable_creation_date: true
-          type: timeago
     # - pdf-export
     - mkdocs-jupyter:
           include_source: True
@@ -102,4 +99,4 @@ nav:
     - Report Issues: https://github.com/Blaizzy/fastmlx/issues
     - Examples:
         - Introduction: examples/intro.ipynb
-    - API Reference: fastmlx.md
+    - API Reference: endpoints.md

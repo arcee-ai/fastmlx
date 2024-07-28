@@ -227,4 +227,4 @@ response = requests.delete(url, params=params)
 print(response)
 ```
 
-For more detailed API documentation, please refer to the [API Reference](api_reference/fastmlx.md) section.
+For more detailed API documentation, please refer to the [API Reference](endpoints.md) section.

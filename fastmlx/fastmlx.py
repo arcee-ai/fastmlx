@@ -69,14 +69,12 @@ class ModelProvider:
 
 
 class ChatMessage(BaseModel):
-    """Represents a single message in a chat conversation."""
 
     role: str
     content: str
 
 
 class ChatCompletionRequest(BaseModel):
-    """Represents a request for chat completion."""
 
     model: str
     messages: List[ChatMessage]
@@ -87,7 +85,6 @@ class ChatCompletionRequest(BaseModel):
 
 
 class ChatCompletionResponse(BaseModel):
-    """Represents a response from a chat completion request."""
 
     id: str
     object: str = "chat.completion"
@@ -143,10 +140,10 @@ async def chat_completion(request: ChatCompletionRequest):
         request (ChatCompletionRequest): The chat completion request.
 
     Returns:
-        ChatCompletionResponse: The generated chat completion response.
+        ChatCompletionResponse (ChatCompletionResponse): The generated chat completion response.
 
     Raises:
-        HTTPException: If MLX library is not available.
+        HTTPException (str): If MLX library is not available.
     """
     if not MLX_AVAILABLE:
         raise HTTPException(status_code=500, detail="MLX library not available")
@@ -274,7 +271,7 @@ async def get_supported_models():
     Get a list of supported model types for VLM and LM.
 
     Returns:
-        JSONResponse: A JSON response containing the supported models.
+        JSONResponse (json): A JSON response containing the supported models.
     """
     return JSONResponse(content=MODELS)
 
@@ -285,7 +282,7 @@ async def list_models():
     List all available (loaded) models.
 
     Returns:
-        dict: A dictionary containing the list of available models.
+        dict (dict): A dictionary containing the list of available models.
     """
     return {"models": await model_provider.get_available_models()}
 
@@ -299,7 +296,7 @@ async def add_model(model_name: str):
         model_name (str): The name of the model to add.
 
     Returns:
-        dict: A dictionary containing the status of the operation.
+        dict (dict): A dictionary containing the status of the operation.
     """
     model_provider.load_model(model_name)
     return {"status": "success", "message": f"Model {model_name} added successfully"}
@@ -314,10 +311,10 @@ async def remove_model(model_name: str):
         model_name (str): The name of the model to remove.
 
     Returns:
-        Response: A 204 No Content response if successful.
+        Response (str): A 204 No Content response if successful.
 
     Raises:
-        HTTPException: If the model is not found.
+        HTTPException (str): If the model is not found.
     """
     model_name = unquote(model_name).strip('"')
     removed = await model_provider.remove_model(model_name)

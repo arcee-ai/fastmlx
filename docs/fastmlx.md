@@ -1,4 +1,0 @@
-
-# FastMLX Module
-
-::: fastmlx
