@@ -1,0 +1,14 @@
+{
+  "models": {
+    "llama": {
+      "prompt_template": "llama3_1.j2",
+      "parallel_tool_calling": true,
+      "eom_token": "<|eom_id|>",
+      "tool_role": "ipython"
+    },
+    "default": {
+      "prompt_template": "llama3_1.j2",
+      "parallel_tool_calling": false
+    }
+  }
+}

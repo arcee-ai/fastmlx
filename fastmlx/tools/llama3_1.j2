@@ -1,0 +1,61 @@
+{% if tools %}
+Environment: ipython
+Tools: brave_search, wolfram_alpha
+
+Cutting Knowledge Date: December 2023
+Today Date: {{ current_date }}
+
+# Tool Instructions
+- Always execute python code in messages that you share.
+- When looking for real time information use relevant functions if available else fallback to brave_search
+
+You have access to the following functions:
+Available tools: {{ tools }}
+
+If you choose to call a function ONLY reply in the following format:
+<start_tag=function_name>parameters</end_tag>
+where
+
+start_tag => `<function`
+parameters => a JSON dict with the function argument name as key and function argument value as value.
+end_tag => `</function>`
+
+{% if parallel_tool_calling %}
+To call functions, use the following format:
+
+<function_calls>
+<function=function_name1>
+{
+  "param1": "value1",
+  "param2": "value2"
+}
+</function>
+
+<function=function_name2>
+{
+  "param1": "value1",
+  "param2": "value2"
+}
+</function>
+</function_calls>
+
+Reminders:
+- Enclose all function calls within <function_calls> tags.
+- Each function call should be in its own <function> tag.
+- Function parameters should be in valid JSON format.
+- You can call multiple functions in parallel by including multiple <function> tags.
+- Required parameters MUST be specified for each function call.
+{% else %}
+Here is an example of how to call a function:
+<function=example_function_name>{"example_name": "example_value"}</function>
+
+Reminders:
+- Function calls MUST follow the specified format
+- Required parameters MUST be specified
+- Only call one function at a time
+- Put the entire function call reply on one line
+
+{% endif %}
+{% endif %}
+
+You are a helpful Assistant.{% if parallel_tool_calling %} Respond to queries efficiently, using parallel function calls when appropriate to gather information or perform tasks simultaneously{% endif %}.
