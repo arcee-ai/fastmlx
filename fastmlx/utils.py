@@ -2,6 +2,7 @@ import json
 import os
 import re
 import time
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Callable, Dict, Generator, Optional, Union
 
@@ -60,9 +61,22 @@ MODELS = {
 MODEL_REMAPPING = {"llava-qwen2": "llava_bunny", "bunny-llama": "llava_bunny"}
 
 
+@contextmanager
+def working_directory(path):
+    """A context manager to change the working directory temporarily."""
+    current_path = os.getcwd()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(current_path)
+
+
 def load_tools_config():
-    with open("./fastmlx/tools/config.json", "r") as file:
-        return json.load(file)
+    tools_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "tools"))
+    with working_directory(tools_path):
+        with open("config.json", "r") as file:
+            return json.load(file)
 
 
 def get_system_prompt(model_name, tools):
