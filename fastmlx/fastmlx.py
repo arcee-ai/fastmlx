@@ -28,7 +28,7 @@ try:
     from .utils import (
         MODEL_REMAPPING,
         MODELS,
-        get_system_prompt,
+        get_tool_prompt,
         handle_function_calls,
         lm_generate,
         lm_stream_generator,
@@ -125,17 +125,20 @@ async def chat_completion(request: ChatCompletionRequest):
     if request.tools:
         # Handle system prompt
         if request.messages and request.messages[0].role == "system":
-            # If the first message is already a system message, use it as is
-            system_prompt = request.messages[0].content
+            pass
         else:
             # Generate system prompt based on model and tools
-            system_prompt = get_system_prompt(
-                model_type, [tool.model_dump() for tool in request.tools]
+            prompt, user_role = get_tool_prompt(
+                request.model,
+                [tool.model_dump() for tool in request.tools],
+                request.messages[-1].content,
             )
-            # Insert the system prompt at the beginning of the messages
-            request.messages.insert(
-                0, ChatMessage(role="system", content=system_prompt)
-            )
+
+            if user_role:
+                request.messages[-1].content = prompt
+            else:
+                # Insert the system prompt at the beginning of the messages
+                request.messages.insert(0, ChatMessage(role="system", content=prompt))
 
     if model_type in MODELS["vlm"]:
         processor = model_data["processor"]

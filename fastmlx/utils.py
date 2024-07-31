@@ -79,20 +79,48 @@ def load_tools_config():
             return json.load(file)
 
 
-def get_system_prompt(model_name, tools):
+def get_model_type(model_name, available_models):
+    # Convert model name to lowercase for case-insensitive matching
+    model_name_lower = model_name.lower()
+
+    # Check if any of the available model types are in the model name
+    for model_type in available_models:
+        if model_type != "default" and model_type in model_name_lower:
+            return model_type
+
+    # If no match is found, return 'default'
+    return "default"
+
+
+def get_tool_prompt(model_name, tools, prompt):
     tool_config = load_tools_config()
+    available_models = tool_config["models"].keys()
+    model_type = get_model_type(model_name, available_models)
     model_config = tool_config["models"].get(
-        model_name, tool_config["models"]["default"]
+        model_type, tool_config["models"]["default"]
     )
     templates_dir = os.path.abspath("./fastmlx/tools")
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template(model_config["prompt_template"])
-
-    return template.render(
-        tools=tools,
-        parallel_tool_calling=model_config.get("parallel_tool_calling", False),
-        current_date=datetime.now().strftime("%d %b %Y"),
-    )
+    if model_config.get("query", False):
+        return (
+            template.render(
+                tools=tools,
+                parallel_tool_calling=model_config.get("parallel_tool_calling", False),
+                current_date=datetime.now().strftime("%d %b %Y"),
+                query=prompt,
+            ),
+            True,
+        )
+    else:
+        return (
+            template.render(
+                tools=tools,
+                parallel_tool_calling=model_config.get("parallel_tool_calling", False),
+                current_date=datetime.now().strftime("%d %b %Y"),
+            ),
+            False,
+        )
 
 
 def get_eom_token(model_type):
@@ -106,12 +134,33 @@ def get_eom_token(model_type):
 
 def handle_function_calls(output: str, request):
     tool_calls = []
-    if "<function_calls>" in output.lower():
-        try:
-            # Extract all function calls
-            function_calls = re.findall(r"<function=(\w+)>\s*({[^<>]+})", output)
 
-            for i, (function_name, args_str) in enumerate(function_calls):
+    # Check for JSON format tool calls
+    json_match = re.search(r'\{.*"tool_calls":\s*\[.*\].*\}', output, re.DOTALL)
+    if json_match:
+        try:
+            json_data = json.loads(json_match.group())
+            for call in json_data.get("tool_calls", []):
+                tool_calls.append(
+                    ToolCall(
+                        id=f"call_{os.urandom(4).hex()}",
+                        function=FunctionCall(
+                            name=call["name"], arguments=json.dumps(call["arguments"])
+                        ),
+                    )
+                )
+            # Remove the JSON from the output
+            output = re.sub(
+                r'\{.*"tool_calls":\s*\[.*\].*\}', "", output, flags=re.DOTALL
+            ).strip()
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON tool calls: {e}")
+
+    # Check for <function_calls> format
+    elif "<function_calls>" in output.lower():
+        try:
+            function_calls = re.findall(r"<function=(\w+)>\s*({[^<>]+})", output)
+            for function_name, args_str in function_calls:
                 args = json.loads(args_str)
                 tool_calls.append(
                     ToolCall(
@@ -121,7 +170,6 @@ def handle_function_calls(output: str, request):
                         ),
                     )
                 )
-
             # Remove the function calls from the output
             output = re.sub(
                 r"<function_calls>.*</function_calls>", "", output, flags=re.DOTALL

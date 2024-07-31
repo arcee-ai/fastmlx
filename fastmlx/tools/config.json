@@ -6,6 +6,11 @@
       "eom_token": "<|eom_id|>",
       "tool_role": "ipython"
     },
+    "xlam": {
+      "prompt_template": "xlam.j2",
+      "parallel_tool_calling": true,
+      "tool_role": "tool"
+    },
     "default": {
       "prompt_template": "llama3_1.j2",
       "parallel_tool_calling": false
