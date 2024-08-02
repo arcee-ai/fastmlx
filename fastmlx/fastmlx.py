@@ -3,7 +3,6 @@
 import argparse
 import asyncio
 import os
-import time
 from typing import Any, Dict, List
 from urllib.parse import unquote
 
@@ -15,19 +14,19 @@ from .types.chat.chat_completion import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChatMessage,
-    FunctionCall,
-    ToolCall,
 )
 from .types.model import SupportedModels
 
 try:
     from mlx_vlm import generate as vlm_generate
-    from mlx_vlm.prompt_utils import get_message_json
+    from mlx_vlm.prompt_utils import apply_chat_template as apply_vlm_chat_template
     from mlx_vlm.utils import load_config
 
     from .utils import (
         MODEL_REMAPPING,
         MODELS,
+        apply_lm_chat_template,
+        get_eom_token,
         get_tool_prompt,
         handle_function_calls,
         lm_generate,
@@ -120,25 +119,7 @@ async def chat_completion(request: ChatCompletionRequest):
     model = model_data["model"]
     config = model_data["config"]
     model_type = MODEL_REMAPPING.get(config["model_type"], config["model_type"])
-
-    # Add function calling information to the prompt
-    if request.tools:
-        # Handle system prompt
-        if request.messages and request.messages[0].role == "system":
-            pass
-        else:
-            # Generate system prompt based on model and tools
-            prompt, user_role = get_tool_prompt(
-                request.model,
-                [tool.model_dump() for tool in request.tools],
-                request.messages[-1].content,
-            )
-
-            if user_role:
-                request.messages[-1].content = prompt
-            else:
-                # Insert the system prompt at the beginning of the messages
-                request.messages.insert(0, ChatMessage(role="system", content=prompt))
+    stop_words = get_eom_token(request.model)
 
     if model_type in MODELS["vlm"]:
         processor = model_data["processor"]
@@ -150,29 +131,15 @@ async def chat_completion(request: ChatCompletionRequest):
 
         for msg in request.messages:
             if msg.role == "user":
-                chat_messages.append(
-                    get_message_json(config["model_type"], msg.content)
-                )
+                chat_messages.append(msg.content)
             else:
                 chat_messages.append({"role": msg.role, "content": msg.content})
 
         prompt = ""
-        if "chat_template" in processor.__dict__.keys():
-            prompt = processor.apply_chat_template(
-                chat_messages,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-
-        elif "tokenizer" in processor.__dict__.keys():
-            if model.config.model_type != "paligemma":
-                prompt = processor.tokenizer.apply_chat_template(
-                    chat_messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
-            else:
-                prompt = request.messages[-1].content
+        if model.config.model_type != "paligemma":
+            prompt = apply_vlm_chat_template(processor, model.config, chat_messages)
+        else:
+            prompt = request.messages[-1].content
 
         if stream:
             return StreamingResponse(
@@ -202,20 +169,33 @@ async def chat_completion(request: ChatCompletionRequest):
             )
 
     else:
+        # Add function calling information to the prompt
+        if request.tools and "firefunction-v2" not in request.model:
+            # Handle system prompt
+            if request.messages and request.messages[0].role == "system":
+                pass
+            else:
+                # Generate system prompt based on model and tools
+                prompt, user_role = get_tool_prompt(
+                    request.model,
+                    [tool.model_dump() for tool in request.tools],
+                    request.messages[-1].content,
+                )
+
+                if user_role:
+                    request.messages[-1].content = prompt
+                else:
+                    # Insert the system prompt at the beginning of the messages
+                    request.messages.insert(
+                        0, ChatMessage(role="system", content=prompt)
+                    )
+
         tokenizer = model_data["tokenizer"]
+
         chat_messages = [
             {"role": msg.role, "content": msg.content} for msg in request.messages
         ]
-        if tokenizer.chat_template is not None and hasattr(
-            tokenizer, "apply_chat_template"
-        ):
-            prompt = tokenizer.apply_chat_template(
-                chat_messages,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-        else:
-            prompt = request.messages[-1].content
+        prompt = apply_lm_chat_template(tokenizer, chat_messages, request)
 
         if stream:
             return StreamingResponse(
@@ -226,12 +206,18 @@ async def chat_completion(request: ChatCompletionRequest):
                     prompt,
                     request.max_tokens,
                     request.temperature,
+                    stop_words=stop_words,
                 ),
                 media_type="text/event-stream",
             )
         else:
             output = lm_generate(
-                model, tokenizer, prompt, request.max_tokens, False, request.temperature
+                model,
+                tokenizer,
+                prompt,
+                request.max_tokens,
+                temp=request.temperature,
+                stop_words=stop_words,
             )
 
     # Parse the output to check for function calls

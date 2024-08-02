@@ -4,12 +4,13 @@ import re
 import time
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Callable, Dict, Generator, Optional, Union
+from typing import Any, Dict, Generator, List, Union
 
 from jinja2 import Environment, FileSystemLoader
 
 from .types.chat.chat_completion import (
     ChatCompletionChunk,
+    ChatCompletionRequest,
     ChatCompletionResponse,
     FunctionCall,
     ToolCall,
@@ -18,7 +19,6 @@ from .types.chat.chat_completion import (
 # MLX Imports
 try:
     import mlx.core as mx
-    import mlx.nn as nn
     from mlx_lm import load as lm_load
     from mlx_lm import models as lm_models
     from mlx_lm.tokenizer_utils import TokenizerWrapper
@@ -81,7 +81,7 @@ def load_tools_config():
 
 def get_model_type(model_name, available_models):
     # Convert model name to lowercase for case-insensitive matching
-    model_name_lower = model_name.lower()
+    model_name_lower = model_name.lower().replace(".", "_")
 
     # Check if any of the available model types are in the model name
     for model_type in available_models:
@@ -123,13 +123,41 @@ def get_tool_prompt(model_name, tools, prompt):
         )
 
 
-def get_eom_token(model_type):
+def get_eom_token(model_name):
     tool_config = load_tools_config()
+    available_models = tool_config["models"].keys()
+    model_type = get_model_type(model_name, available_models)
     model_config = tool_config["models"].get(
         model_type, tool_config["models"]["default"]
     )
     eom_token = model_config.get("eom_token", None)
     return eom_token
+
+
+def apply_lm_chat_template(
+    tokenizer: Any, chat_messages: List[Dict], request: ChatCompletionRequest
+) -> str:
+    if tokenizer.chat_template is not None and hasattr(
+        tokenizer, "apply_chat_template"
+    ):
+        if "firefunction-v2" in request.model:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            return tokenizer.apply_chat_template(
+                chat_messages,
+                functions=json.dumps(
+                    [tool.model_dump() for tool in request.tools], indent=4
+                ),
+                datetime=now,
+                tokenize=False,
+            )
+        else:
+            return tokenizer.apply_chat_template(
+                chat_messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+    else:
+        return request.messages[-1].content
 
 
 def handle_function_calls(output: str, request):
@@ -156,9 +184,11 @@ def handle_function_calls(output: str, request):
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON tool calls: {e}")
 
-    # Check for <function_calls> format
+    # Check for XML-style function calls
+    # Check for function calls in both old and new XML formats
     elif "<function_calls>" in output.lower():
         try:
+            # Try parsing old format
             function_calls = re.findall(r"<function=(\w+)>\s*({[^<>]+})", output)
             for function_name, args_str in function_calls:
                 args = json.loads(args_str)
@@ -170,12 +200,63 @@ def handle_function_calls(output: str, request):
                         ),
                     )
                 )
+
+            # Try parsing new XML format
+            invoke_blocks = re.findall(
+                r"<invoke>(.*?)</invoke>", output, re.DOTALL | re.IGNORECASE
+            )
+            for block in invoke_blocks:
+                tool_name = re.search(
+                    r"<tool_name>(.*?)</tool_name>", block, re.IGNORECASE
+                )
+                parameters = re.findall(r"<(\w+)>(.*?)</\1>", block, re.IGNORECASE)
+
+                if tool_name:
+                    args = {
+                        param[0].lower(): param[1]
+                        for param in parameters
+                        if param[0].lower() != "tool_name"
+                    }
+                    tool_calls.append(
+                        ToolCall(
+                            id=f"call_{os.urandom(4).hex()}",
+                            function=FunctionCall(
+                                name=tool_name.group(1), arguments=json.dumps(args)
+                            ),
+                        )
+                    )
+
             # Remove the function calls from the output
             output = re.sub(
-                r"<function_calls>.*</function_calls>", "", output, flags=re.DOTALL
+                r"<function_calls>.*</function_calls>",
+                "",
+                output,
+                flags=re.DOTALL | re.IGNORECASE,
             ).strip()
         except Exception as e:
             print(f"Error parsing function call: {e}")
+
+    elif "functools[" in output:
+        try:
+            functools_match = re.search(r"functools\[(.*?)\]", output, re.DOTALL)
+            if functools_match:
+                functools_data = json.loads(f"[{functools_match.group(1)}]")
+                for call in functools_data:
+                    tool_calls.append(
+                        ToolCall(
+                            id=f"call_{os.urandom(4).hex()}",
+                            function=FunctionCall(
+                                name=call["name"],
+                                arguments=json.dumps(call["arguments"]),
+                            ),
+                        )
+                    )
+                # Remove the functools call from the output
+                output = re.sub(
+                    r"functools\[.*?\]", "", output, flags=re.DOTALL
+                ).strip()
+        except Exception as e:
+            print(f"Error parsing functools call: {e}")
 
     # Prepare the response
     response = ChatCompletionResponse(
@@ -252,8 +333,6 @@ def lm_generate(
     tokenizer,
     prompt: str,
     max_tokens: int = 100,
-    verbose: bool = False,
-    formatter: Optional[Callable] = None,
     **kwargs,
 ) -> Union[str, Generator[str, None, None]]:
     """
@@ -274,9 +353,11 @@ def lm_generate(
     if not isinstance(tokenizer, TokenizerWrapper):
         tokenizer = TokenizerWrapper(tokenizer)
 
-    eom_token = get_eom_token(model.model_type)
+    stop_words = kwargs.pop("stop_words", [])
 
-    eom_token_id = tokenizer.encode(eom_token)[0] if eom_token else None
+    stop_words_id = (
+        tokenizer._tokenizer(stop_words)["input_ids"][0] if stop_words else None
+    )
 
     prompt_tokens = mx.array(tokenizer.encode(prompt))
     detokenizer = tokenizer.detokenizer
@@ -287,7 +368,9 @@ def lm_generate(
         generate_step(prompt_tokens, model, **kwargs),
         range(max_tokens),
     ):
-        if token == tokenizer.eos_token_id or (eom_token_id and token == eom_token_id):
+        if token == tokenizer.eos_token_id or (
+            stop_words_id and token in stop_words_id
+        ):
             break
 
         detokenizer.add_token(token)
@@ -296,13 +379,15 @@ def lm_generate(
     return detokenizer.text
 
 
-def lm_stream_generator(model, model_name, tokenizer, prompt, max_tokens, temperature):
-    eom_token = get_eom_token(model.model_type)
+def lm_stream_generator(
+    model, model_name, tokenizer, prompt, max_tokens, temperature, **kwargs
+):
+    stop_words = kwargs.pop("stop_words", [])
 
     for token in lm_stream_generate(
         model, tokenizer, prompt, max_tokens=max_tokens, temp=temperature
     ):
-        if eom_token and token == eom_token:
+        if stop_words and token in stop_words:
             break
 
         chunk = ChatCompletionChunk(
