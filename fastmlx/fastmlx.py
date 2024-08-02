@@ -137,7 +137,7 @@ async def chat_completion(request: ChatCompletionRequest):
 
         prompt = ""
         if model.config.model_type != "paligemma":
-            prompt = apply_vlm_chat_template(processor, model.config, chat_messages)
+            prompt = apply_vlm_chat_template(processor, config, chat_messages)
         else:
             prompt = request.messages[-1].content
 
