@@ -1,6 +1,6 @@
 [project]
 name = "fastmlx"
-version = "0.2.0"
+version = "0.2.1"
 dynamic = [
     "dependencies",
 ]
@@ -56,7 +56,7 @@ universal = true
 
 
 [tool.bumpversion]
-current_version = "0.1.0"
+current_version = "0.2.1"
 commit = true
 tag = true
 

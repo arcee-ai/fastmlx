@@ -2,6 +2,6 @@
 
 __author__ = """Prince Canuma"""
 __email__ = "prince.gdt@gmail.com"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 from .fastmlx import *
