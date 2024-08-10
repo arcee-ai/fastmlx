@@ -32,6 +32,9 @@ except ImportError:
     print("Warning: mlx or mlx_lm not available. Some functionality will be limited.")
 
 
+TOOLS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "tools"))
+
+
 def get_model_type_list(models, type="vlm"):
 
     # Get the directory path of the models package
@@ -73,8 +76,7 @@ def working_directory(path):
 
 
 def load_tools_config():
-    tools_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "tools"))
-    with working_directory(tools_path):
+    with working_directory(TOOLS_PATH):
         with open("config.json", "r") as file:
             return json.load(file)
 
@@ -99,8 +101,7 @@ def get_tool_prompt(model_name, tools, prompt):
     model_config = tool_config["models"].get(
         model_type, tool_config["models"]["default"]
     )
-    templates_dir = os.path.abspath("./fastmlx/tools")
-    env = Environment(loader=FileSystemLoader(templates_dir))
+    env = Environment(loader=FileSystemLoader(TOOLS_PATH))
     template = env.get_template(model_config["prompt_template"])
     if model_config.get("query", False):
         return (
