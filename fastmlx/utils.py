@@ -311,9 +311,6 @@ def vlm_stream_generator(
     max_tokens,
     temperature,
 ):
-    # token_length_info = { "prompt_tokens": len(mx.array(processor.encode(prompt))) }
-    # token_length_info["completion_tokens"] = 0
-    # token_length_info["total_tokens"] = token_length_info["prompt_tokens"]
     _prompt_tokens = len(mx.array(processor.encode(prompt)))
     token_length_info: Usage = Usage(
                             prompt_tokens=_prompt_tokens,
