@@ -24,6 +24,11 @@ class ChatMessage(BaseModel):
     role: str
     content: str
 
+class Usage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
 
 class ChatCompletionRequest(BaseModel):
     model: str
@@ -41,6 +46,7 @@ class ChatCompletionResponse(BaseModel):
     object: str = "chat.completion"
     created: int
     model: str
+    usage: Usage
     choices: List[dict]
     tool_calls: Optional[List[ToolCall]] = None
 
@@ -50,4 +56,5 @@ class ChatCompletionChunk(BaseModel):
     object: str = "chat.completion.chunk"
     created: int
     model: str
+    usage: Usage
     choices: List[Dict[str, Any]]

@@ -14,6 +14,7 @@ from .types.chat.chat_completion import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChatMessage,
+    Usage,
 )
 from .types.model import SupportedModels
 
@@ -211,7 +212,7 @@ async def chat_completion(request: ChatCompletionRequest):
                 media_type="text/event-stream",
             )
         else:
-            output = lm_generate(
+            output, token_length_info = lm_generate(
                 model,
                 tokenizer,
                 prompt,
@@ -221,7 +222,7 @@ async def chat_completion(request: ChatCompletionRequest):
             )
 
     # Parse the output to check for function calls
-    return handle_function_calls(output, request)
+    return handle_function_calls(output, request, token_length_info)
 
 
 @app.get("/v1/supported_models", response_model=SupportedModels)

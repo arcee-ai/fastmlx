@@ -14,6 +14,7 @@ from .types.chat.chat_completion import (
     ChatCompletionResponse,
     FunctionCall,
     ToolCall,
+    Usage,
 )
 
 # MLX Imports
@@ -161,7 +162,7 @@ def apply_lm_chat_template(
         return request.messages[-1].content
 
 
-def handle_function_calls(output: str, request):
+def handle_function_calls(output: str, request: ChatCompletionRequest, token_info: Usage) -> ChatCompletionResponse:
     tool_calls = []
 
     # Check for JSON format tool calls
@@ -264,6 +265,7 @@ def handle_function_calls(output: str, request):
         id=f"chatcmpl-{os.urandom(4).hex()}",
         created=int(time.time()),
         model=request.model,
+        usage=token_info,
         choices=[
             {
                 "index": 0,
@@ -290,7 +292,12 @@ def load_vlm_model(model_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def load_lm_model(model_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
-    model, tokenizer = lm_load(model_name)
+    time_start = time.time()
+    # config["max_position_embeddings"] = 8192
+    # print(f"Config: {config}")
+    # config["context_size"] = 1024
+    model, tokenizer = lm_load(model_name, model_config=config)
+    print(f"Model loaded in {time.time() - time_start:.2f} seconds.")
     return {"model": model, "tokenizer": tokenizer, "config": config}
 
 
@@ -304,6 +311,17 @@ def vlm_stream_generator(
     max_tokens,
     temperature,
 ):
+    # token_length_info = { "prompt_tokens": len(mx.array(processor.encode(prompt))) }
+    # token_length_info["completion_tokens"] = 0
+    # token_length_info["total_tokens"] = token_length_info["prompt_tokens"]
+    _prompt_tokens = len(mx.array(processor.encode(prompt)))
+    token_length_info: Usage = Usage(
+                            prompt_tokens=_prompt_tokens,
+                            completion_tokens=0,
+                            total_tokens=_prompt_tokens
+                          )
+
+
     for token in vlm_stream_generate(
         model,
         processor,
@@ -313,10 +331,15 @@ def vlm_stream_generator(
         max_tokens=max_tokens,
         temp=temperature,
     ):
+        # Update token length info
+        token_length_info.completion_tokens += 1
+        token_length_info.total_tokens += 1
+
         chunk = ChatCompletionChunk(
             id=f"chatcmpl-{os.urandom(4).hex()}",
             created=int(time.time()),
             model=model_name,
+            usage=token_length_info,
             choices=[
                 {
                     "index": 0,
@@ -361,6 +384,8 @@ def lm_generate(
     )
 
     prompt_tokens = mx.array(tokenizer.encode(prompt))
+    prompt_token_len = len(prompt_tokens)
+    print(f"Prompt tokens: {prompt_token_len}")
     detokenizer = tokenizer.detokenizer
 
     detokenizer.reset()
@@ -377,7 +402,14 @@ def lm_generate(
         detokenizer.add_token(token)
 
     detokenizer.finalize()
-    return detokenizer.text
+
+    _completion_tokens = len(detokenizer.tokens)
+    token_length_info: Usage = Usage(
+                            prompt_tokens=prompt_token_len,
+                            completion_tokens=_completion_tokens,
+                            total_tokens=prompt_token_len + _completion_tokens
+                          )
+    return detokenizer.text, token_length_info
 
 
 def lm_stream_generator(
@@ -385,16 +417,32 @@ def lm_stream_generator(
 ):
     stop_words = kwargs.pop("stop_words", [])
 
+    # Tokenization is a pretty lightweight operation, so doing it twice like this is fine
+    # once here, and once in mlx.utils.stream_generate (lm_stream_generate)
+
+    _prompt_tokens = len(mx.array(tokenizer.encode(prompt)))
+    token_length_info: Usage = Usage(
+                            prompt_tokens=_prompt_tokens,
+                            completion_tokens=0,
+                            total_tokens=_prompt_tokens
+                          )
+
+
     for token in lm_stream_generate(
         model, tokenizer, prompt, max_tokens=max_tokens, temp=temperature
     ):
         if stop_words and token in stop_words:
             break
 
+        # Update token length info
+        token_length_info.completion_tokens += 1
+        token_length_info.total_tokens += 1
+
         chunk = ChatCompletionChunk(
             id=f"chatcmpl-{os.urandom(4).hex()}",
             created=int(time.time()),
             model=model_name,
+            usage=token_length_info,
             choices=[
                 {
                     "index": 0,
