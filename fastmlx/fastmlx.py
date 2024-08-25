@@ -153,6 +153,7 @@ async def chat_completion(request: ChatCompletionRequest):
                     image_processor,
                     request.max_tokens,
                     request.temperature,
+                    stream_options=request.stream_options,
                 ),
                 media_type="text/event-stream",
             )
@@ -208,6 +209,7 @@ async def chat_completion(request: ChatCompletionRequest):
                     request.max_tokens,
                     request.temperature,
                     stop_words=stop_words,
+                    stream_options=request.stream_options,
                 ),
                 media_type="text/event-stream",
             )

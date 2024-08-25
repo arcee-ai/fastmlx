@@ -39,6 +39,7 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = Field(default=0.2)
     tools: Optional[List[Function]] = Field(default=None)
     tool_choice: Optional[str] = Field(default=None)
+    stream_options: Optional[Dict[str, Any]] = Field(default=None)
 
 
 class ChatCompletionResponse(BaseModel):
@@ -56,5 +57,5 @@ class ChatCompletionChunk(BaseModel):
     object: str = "chat.completion.chunk"
     created: int
     model: str
-    usage: Usage
     choices: List[Dict[str, Any]]
+    usage: Optional[Usage] = None
