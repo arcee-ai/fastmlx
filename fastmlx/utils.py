@@ -464,18 +464,18 @@ def lm_stream_generator(
         )
         yield f"data: {json.dumps(chunk.model_dump())}\n\n"
 
-        if INCLUDE_USAGE:
-            chunk = ChatCompletionChunk(
-                id=f"chatcmpl-{os.urandom(4).hex()}",
-                created=int(time.time()),
-                model=model_name,
-                choices=[],
-                usage=Usage(
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    total_tokens=prompt_tokens + completion_tokens,
-                ),
-            )
-            yield f"data: {json.dumps(chunk.model_dump())}\n\n"
+    if INCLUDE_USAGE:
+        chunk = ChatCompletionChunk(
+            id=f"chatcmpl-{os.urandom(4).hex()}",
+            created=int(time.time()),
+            model=model_name,
+            choices=[],
+            usage=Usage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+            ),
+        )
+        yield f"data: {json.dumps(chunk.model_dump())}\n\n"
 
     yield "data: [DONE]\n\n"
