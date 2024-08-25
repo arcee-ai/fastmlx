@@ -24,6 +24,7 @@ class ChatMessage(BaseModel):
     role: str
     content: str
 
+
 class Usage(BaseModel):
     prompt_tokens: int
     completion_tokens: int

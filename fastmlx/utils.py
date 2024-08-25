@@ -162,7 +162,9 @@ def apply_lm_chat_template(
         return request.messages[-1].content
 
 
-def handle_function_calls(output: str, request: ChatCompletionRequest, token_info: Usage) -> ChatCompletionResponse:
+def handle_function_calls(
+    output: str, request: ChatCompletionRequest, token_info: Usage
+) -> ChatCompletionResponse:
     tool_calls = []
 
     # Check for JSON format tool calls
@@ -307,13 +309,14 @@ def vlm_stream_generator(
     image_processor,
     max_tokens,
     temperature,
-    stream_options
+    stream_options,
 ):
-    INCLUDE_USAGE = False if stream_options == None else stream_options.get("include_usage", False)
+    INCLUDE_USAGE = (
+        False if stream_options == None else stream_options.get("include_usage", False)
+    )
     completion_tokens = 0
     prompt_tokens = len(mx.array(processor.encode(prompt))) if INCLUDE_USAGE else None
     empty_usage: Usage = None
-
 
     for token in vlm_stream_generate(
         model,
@@ -411,19 +414,27 @@ def lm_generate(
 
     _completion_tokens = len(detokenizer.tokens)
     token_length_info: Usage = Usage(
-                            prompt_tokens=prompt_token_len,
-                            completion_tokens=_completion_tokens,
-                            total_tokens=prompt_token_len + _completion_tokens
-                          )
+        prompt_tokens=prompt_token_len,
+        completion_tokens=_completion_tokens,
+        total_tokens=prompt_token_len + _completion_tokens,
+    )
     return detokenizer.text, token_length_info
 
 
 def lm_stream_generator(
-    model, model_name, tokenizer, prompt, max_tokens, temperature, stream_options, **kwargs
+    model,
+    model_name,
+    tokenizer,
+    prompt,
+    max_tokens,
+    temperature,
+    stream_options,
+    **kwargs,
 ):
     stop_words = kwargs.pop("stop_words", [])
-    # INCLUDE_USAGE = stream_options.get("include_usage", False)
-    INCLUDE_USAGE = False if stream_options == None else stream_options.get("include_usage", False)
+    INCLUDE_USAGE = (
+        False if stream_options == None else stream_options.get("include_usage", False)
+    )
     prompt_tokens = len(tokenizer.encode(prompt)) if INCLUDE_USAGE else None
     completion_tokens = 0
     empty_usage: Usage = None
