@@ -125,21 +125,29 @@ async def chat_completion(request: ChatCompletionRequest):
         processor = model_data["processor"]
         image_processor = model_data["image_processor"]
 
-        image = request.image
-
+        image_url = None
         chat_messages = []
 
         for msg in request.messages:
-            if msg.role == "user":
-                chat_messages.append(msg.content)
-            else:
+            if isinstance(msg.content, str):
                 chat_messages.append({"role": msg.role, "content": msg.content})
+            elif isinstance(msg.content, list):
+                text_content = ""
+                for content_part in msg.content:
+                    if content_part.type == "text":
+                        text_content += content_part.text + " "
+                    elif content_part.type == "image_url":
+                        image_url = content_part.image_url["url"]
+                chat_messages.append({"role": msg.role, "content": text_content.strip()})
+
+        if not image_url and model_type in MODELS["vlm"]:
+            raise HTTPException(status_code=400, detail="Image URL not provided for VLM model")
 
         prompt = ""
         if model.config.model_type != "paligemma":
             prompt = apply_vlm_chat_template(processor, config, chat_messages)
         else:
-            prompt = request.messages[-1].content
+            prompt = chat_messages[-1]["content"]
 
         if stream:
             return StreamingResponse(
@@ -147,7 +155,7 @@ async def chat_completion(request: ChatCompletionRequest):
                     model,
                     request.model,
                     processor,
-                    request.image,
+                    image_url,
                     prompt,
                     image_processor,
                     request.max_tokens,
@@ -160,7 +168,7 @@ async def chat_completion(request: ChatCompletionRequest):
             output = vlm_generate(
                 model,
                 processor,
-                image,
+                image_url,
                 prompt,
                 image_processor,
                 max_tokens=request.max_tokens,
