@@ -1,6 +1,6 @@
 # CLI Reference
 
-The FastMLX API server can be configured using various command-line arguments. This page provides a detailed reference for each available option.
+The **FastMLX** API server can be configured using various command-line arguments. Here is a detailed reference for each available option. 
 
 ## Usage
 
