@@ -14,6 +14,7 @@ from fastmlx import (
     ChatCompletionResponse,
     ChatMessage,
     ModelProvider,
+    Usage,
     app,
     handle_function_calls,
 )
@@ -53,7 +54,11 @@ MODELS = {"vlm": ["llava"], "lm": ["phi"]}
 
 # Mock functions
 def mock_generate(*args, **kwargs):
-    return "generated response"
+    return "generated response", {
+        "prompt_tokens": 10,
+        "completion_tokens": 20,
+        "total_tokens": 30,
+    }
 
 
 def mock_vlm_stream_generate(*args, **kwargs):
@@ -95,6 +100,11 @@ def test_chat_completion_vlm(client):
 
     assert response.status_code == 200
     assert "generated response" in response.json()["choices"][0]["message"]["content"]
+    assert "usage" in response.json()
+    usage = response.json()["usage"]
+    assert "prompt_tokens" in usage
+    assert "completion_tokens" in usage
+    assert "total_tokens" in usage
 
 
 def test_chat_completion_lm(client):
@@ -107,6 +117,11 @@ def test_chat_completion_lm(client):
 
     assert response.status_code == 200
     assert "generated response" in response.json()["choices"][0]["message"]["content"]
+    assert "usage" in response.json()
+    usage = response.json()["usage"]
+    assert "prompt_tokens" in usage
+    assert "completion_tokens" in usage
+    assert "total_tokens" in usage
 
 
 @pytest.mark.asyncio
@@ -141,6 +156,11 @@ async def test_vlm_streaming(client):
             assert "delta" in data["choices"][0]
             assert "role" in data["choices"][0]["delta"]
             assert "content" in data["choices"][0]["delta"]
+            if "usage" in data:
+                usage = data["usage"]
+                assert "prompt_tokens" in usage
+                assert "completion_tokens" in usage
+                assert "total_tokens" in usage
 
     assert chunks[-2] == "data: [DONE]"
 
@@ -177,6 +197,11 @@ async def test_lm_streaming(client):
             assert "delta" in data["choices"][0]
             assert "role" in data["choices"][0]["delta"]
             assert "content" in data["choices"][0]["delta"]
+            if "usage" in data:
+                usage = data["usage"]
+                assert "prompt_tokens" in usage
+                assert "completion_tokens" in usage
+                assert "total_tokens" in usage
 
     assert chunks[-2] == "data: [DONE]"
 
@@ -240,8 +265,13 @@ def test_handle_function_calls_json_format():
     """
     request = MagicMock()
     request.model = "test_model"
+    token_info = MagicMock()
+    token_info.prompt_tokens = 10
+    token_info.completion_tokens = 20
+    token_info.total_tokens = 30
+    token_info = Usage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
 
-    response = handle_function_calls(output, request)
+    response = handle_function_calls(output, request, token_info)
 
     assert isinstance(response, ChatCompletionResponse)
     assert len(response.tool_calls) == 1
@@ -252,6 +282,11 @@ def test_handle_function_calls_json_format():
     }
     assert "Here's the weather forecast:" in response.choices[0]["message"]["content"]
     assert '{"tool_calls":' not in response.choices[0]["message"]["content"]
+    assert response.usage
+    usage = response.usage
+    assert usage.prompt_tokens == 10
+    assert usage.completion_tokens == 20
+    assert usage.total_tokens == 30
 
 
 def test_handle_function_calls_xml_format_old():
@@ -262,8 +297,10 @@ def test_handle_function_calls_xml_format_old():
     """
     request = MagicMock()
     request.model = "test_model"
+    token_info = MagicMock()
+    token_info = Usage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
 
-    response = handle_function_calls(output, request)
+    response = handle_function_calls(output, request, token_info)
 
     assert isinstance(response, ChatCompletionResponse)
     assert len(response.tool_calls) == 1
@@ -271,6 +308,11 @@ def test_handle_function_calls_xml_format_old():
     assert json.loads(response.tool_calls[0].function.arguments) == {"symbol": "AAPL"}
     assert "Let me check that for you." in response.choices[0]["message"]["content"]
     assert "<function_calls>" not in response.choices[0]["message"]["content"]
+    assert response.usage
+    usage = response.usage
+    assert usage.prompt_tokens == 10
+    assert usage.completion_tokens == 20
+    assert usage.total_tokens == 30
 
 
 def test_handle_function_calls_xml_format_new():
@@ -285,8 +327,9 @@ def test_handle_function_calls_xml_format_new():
     """
     request = MagicMock()
     request.model = "test_model"
+    token_info = Usage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
 
-    response = handle_function_calls(output, request)
+    response = handle_function_calls(output, request, token_info)
 
     assert isinstance(response, ChatCompletionResponse)
     assert len(response.tool_calls) == 1
@@ -300,6 +343,11 @@ def test_handle_function_calls_xml_format_new():
         in response.choices[0]["message"]["content"]
     )
     assert "<function_calls>" not in response.choices[0]["message"]["content"]
+    assert response.usage
+    usage = response.usage
+    assert usage.prompt_tokens == 10
+    assert usage.completion_tokens == 20
+    assert usage.total_tokens == 30
 
 
 def test_handle_function_calls_functools_format():
@@ -308,8 +356,9 @@ def test_handle_function_calls_functools_format():
     """
     request = MagicMock()
     request.model = "test_model"
+    token_info = Usage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
 
-    response = handle_function_calls(output, request)
+    response = handle_function_calls(output, request, token_info)
 
     assert isinstance(response, ChatCompletionResponse)
     assert response.tool_calls is not None
@@ -321,6 +370,11 @@ def test_handle_function_calls_functools_format():
     }
     assert "Here are the results:" in response.choices[0]["message"]["content"]
     assert "functools[" not in response.choices[0]["message"]["content"]
+    assert response.usage
+    usage = response.usage
+    assert usage.prompt_tokens == 10
+    assert usage.completion_tokens == 20
+    assert usage.total_tokens == 30
 
 
 # Add a new test for multiple function calls in functools format
@@ -330,7 +384,9 @@ def test_handle_function_calls_multiple_functools():
     """
     request = MagicMock()
     request.model = "test_model"
-    response = handle_function_calls(output, request)
+    token_info = Usage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+
+    response = handle_function_calls(output, request, token_info)
     assert isinstance(response, ChatCompletionResponse)
     assert response.tool_calls is not None
     assert len(response.tool_calls) == 2
@@ -342,6 +398,11 @@ def test_handle_function_calls_multiple_functools():
     assert json.loads(response.tool_calls[1].function.arguments) == {"timezone": "EST"}
     assert "Here are the results:" in response.choices[0]["message"]["content"]
     assert "functools[" not in response.choices[0]["message"]["content"]
+    assert response.usage
+    usage = response.usage
+    assert usage.prompt_tokens == 10
+    assert usage.completion_tokens == 20
+    assert usage.total_tokens == 30
 
 
 if __name__ == "__main__":
