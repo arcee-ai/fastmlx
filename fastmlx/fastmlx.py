@@ -138,10 +138,14 @@ async def chat_completion(request: ChatCompletionRequest):
                         text_content += content_part.text + " "
                     elif content_part.type == "image_url":
                         image_url = content_part.image_url["url"]
-                chat_messages.append({"role": msg.role, "content": text_content.strip()})
+                chat_messages.append(
+                    {"role": msg.role, "content": text_content.strip()}
+                )
 
         if not image_url and model_type in MODELS["vlm"]:
-            raise HTTPException(status_code=400, detail="Image URL not provided for VLM model")
+            raise HTTPException(
+                status_code=400, detail="Image URL not provided for VLM model"
+            )
 
         prompt = ""
         if model.config.model_type != "paligemma":
