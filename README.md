@@ -288,7 +288,7 @@
 
    Please note that while streaming is available for regular text generation, the streaming implementation for function calling is still in development and does not yet fully comply with the OpenAI specification.
 
-5. **Listi Supported Models**
+5. **List Supported Models**
 
    To see all vision and language models supported by MLX:
 
