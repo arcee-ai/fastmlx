@@ -288,7 +288,7 @@
 
    Please note that while streaming is available for regular text generation, the streaming implementation for function calling is still in development and does not yet fully comply with the OpenAI specification.
 
-5. **Listing Available Models**
+5. **Listi Supported Models**
 
    To see all vision and language models supported by MLX:
 
@@ -300,7 +300,7 @@
    print(response.json())
    ```
 
-6. **List Available Models**
+6. **Add Available Model**
 
    You can add new models to the API:
 
@@ -316,9 +316,9 @@
    print(response.json())
    ```
 
-7. **Listing Available Models**
+7. **List Available Models**
 
-   To see all available models:
+   Provides the list of available models that have been added in a OpenAI compliant format:
 
    ```python
    import requests

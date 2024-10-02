@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import os
+import time
 from typing import Any, Dict, List
 from urllib.parse import unquote
 
@@ -246,7 +247,19 @@ async def get_supported_models():
 
 @app.get("/v1/models")
 async def list_models():
-    return {"models": await model_provider.get_available_models()}
+    """
+        Get list of models - provided in OpenAI API compliant format.
+    """
+    models = await model_provider.get_available_models()
+    models_data = []
+    for model in models:
+        models_data.append({
+            "id": model,
+            "object": "model",
+            "created": int(time.time()),
+            "owned_by": "system"
+        })
+    return {"object": "list", "data": models_data}
 
 
 @app.post("/v1/models")
