@@ -1,5 +1,5 @@
 mlx>=0.15
 mlx-lm>=0.15.2
-mlx-vlm>=0.0.11
+mlx-vlm>=0.0.12
 fastapi>=0.111.0
 jinja2

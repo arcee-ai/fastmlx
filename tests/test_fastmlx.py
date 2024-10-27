@@ -9,7 +9,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Import the actual classes and functions
-from fastmlx import ChatCompletionRequest, ChatMessage, ModelProvider, app
+from fastmlx import (
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatMessage,
+    ModelProvider,
+    app,
+    handle_function_calls,
+)
 
 
 # Create mock classes that inherit from the original classes
@@ -225,6 +232,116 @@ def test_remove_model(client):
     response = client.delete("/v1/models?model_name=non_existent_model")
     assert response.status_code == 404
     assert "Model 'non_existent_model' not found" in response.json()["detail"]
+
+
+def test_handle_function_calls_json_format():
+    output = """Here's the weather forecast:
+    {"tool_calls": [{"name": "get_weather", "arguments": {"location": "New York", "date": "2023-08-15"}}]}
+    """
+    request = MagicMock()
+    request.model = "test_model"
+
+    response = handle_function_calls(output, request)
+
+    assert isinstance(response, ChatCompletionResponse)
+    assert len(response.tool_calls) == 1
+    assert response.tool_calls[0].function.name == "get_weather"
+    assert json.loads(response.tool_calls[0].function.arguments) == {
+        "location": "New York",
+        "date": "2023-08-15",
+    }
+    assert "Here's the weather forecast:" in response.choices[0]["message"]["content"]
+    assert '{"tool_calls":' not in response.choices[0]["message"]["content"]
+
+
+def test_handle_function_calls_xml_format_old():
+    output = """Let me check that for you.
+    <function_calls>
+    <function=get_stock_price>{"symbol": "AAPL"}</function>
+    </function_calls>
+    """
+    request = MagicMock()
+    request.model = "test_model"
+
+    response = handle_function_calls(output, request)
+
+    assert isinstance(response, ChatCompletionResponse)
+    assert len(response.tool_calls) == 1
+    assert response.tool_calls[0].function.name == "get_stock_price"
+    assert json.loads(response.tool_calls[0].function.arguments) == {"symbol": "AAPL"}
+    assert "Let me check that for you." in response.choices[0]["message"]["content"]
+    assert "<function_calls>" not in response.choices[0]["message"]["content"]
+
+
+def test_handle_function_calls_xml_format_new():
+    output = """I'll get that information for you.
+    <function_calls>
+    <invoke>
+    <tool_name>search_database</tool_name>
+    <query>latest smartphones</query>
+    <limit>5</limit>
+    </invoke>
+    </function_calls>
+    """
+    request = MagicMock()
+    request.model = "test_model"
+
+    response = handle_function_calls(output, request)
+
+    assert isinstance(response, ChatCompletionResponse)
+    assert len(response.tool_calls) == 1
+    assert response.tool_calls[0].function.name == "search_database"
+    assert json.loads(response.tool_calls[0].function.arguments) == {
+        "query": "latest smartphones",
+        "limit": "5",
+    }
+    assert (
+        "I'll get that information for you."
+        in response.choices[0]["message"]["content"]
+    )
+    assert "<function_calls>" not in response.choices[0]["message"]["content"]
+
+
+def test_handle_function_calls_functools_format():
+    output = """Here are the results:
+    functools[{"name": "get_current_weather", "arguments": {"location": "San Francisco, CA", "format": "fahrenheit"}}]
+    """
+    request = MagicMock()
+    request.model = "test_model"
+
+    response = handle_function_calls(output, request)
+
+    assert isinstance(response, ChatCompletionResponse)
+    assert response.tool_calls is not None
+    assert len(response.tool_calls) == 1
+    assert response.tool_calls[0].function.name == "get_current_weather"
+    assert json.loads(response.tool_calls[0].function.arguments) == {
+        "location": "San Francisco, CA",
+        "format": "fahrenheit",
+    }
+    assert "Here are the results:" in response.choices[0]["message"]["content"]
+    assert "functools[" not in response.choices[0]["message"]["content"]
+
+
+# Add a new test for multiple function calls in functools format
+def test_handle_function_calls_multiple_functools():
+    output = """Here are the results:
+    functools[{"name": "get_weather", "arguments": {"location": "New York"}}, {"name": "get_time", "arguments": {"timezone": "EST"}}]
+    """
+    request = MagicMock()
+    request.model = "test_model"
+    response = handle_function_calls(output, request)
+    assert isinstance(response, ChatCompletionResponse)
+    assert response.tool_calls is not None
+    assert len(response.tool_calls) == 2
+    assert response.tool_calls[0].function.name == "get_weather"
+    assert json.loads(response.tool_calls[0].function.arguments) == {
+        "location": "New York"
+    }
+    assert response.tool_calls[1].function.name == "get_time"
+    assert json.loads(response.tool_calls[1].function.arguments) == {"timezone": "EST"}
+    assert "Here are the results:" in response.choices[0]["message"]["content"]
+    assert "functools[" not in response.choices[0]["message"]["content"]
 
 
 if __name__ == "__main__":

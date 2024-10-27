@@ -31,7 +31,7 @@
 
    Start the FastMLX server:
    ```bash
-   fastmlx 
+   fastmlx
    ```
    or
 
@@ -39,7 +39,7 @@
    uvicorn fastmlx:app --reload --workers 0
    ```
 
-   > [!WARNING] 
+   > [!WARNING]
    > The `--reload` flag should not be used in production. It is only intended for development purposes.
 
    ### Running with Multiple Workers (Parallel Processing)
@@ -49,7 +49,7 @@
    You can also set the `FASTMLX_NUM_WORKERS` environment variable to specify the number of workers or the fraction of CPU cores to use. `workers` defaults to 2 if not passed explicitly or set via the environment variable.
 
    In order of precedence (highest to lowest), the number of workers is determined by the following:
-   - Explicitly passed as a command-line argument 
+   - Explicitly passed as a command-line argument
      - `--workers 4` will set the number of workers to 4
      - `--workers 0.5` will set the number of workers to half the number of CPU cores available (minimum of 1)
    - Set via the `FASTMLX_NUM_WORKERS` environment variable
@@ -59,7 +59,7 @@
 
    Example:
    ```bash
-   fastmlx --workers 4 
+   fastmlx --workers 4
    ```
    or
 
@@ -68,7 +68,7 @@
    ```
 
    > [!NOTE]
-   > - `--reload` flag is not compatible with multiple workers  
+   > - `--reload` flag is not compatible with multiple workers
    > - The number of workers should typically not exceed the number of CPU cores available on your machine for optimal performance.
 
    ### Considerations for Multi-Worker Setup
@@ -222,7 +222,73 @@
       process_sse_stream(url, headers, data)
    ```
 
-4. **Listing Available Models**
+4. **Function Calling**
+
+   FastMLX now supports tool calling in accordance with the OpenAI API specification. This feature is available for the following models:
+
+   - Llama 3.1
+   - Arcee Agent
+   - C4ai-Command-R-Plus
+   - Firefunction
+   - xLAM
+
+   Supported modes:
+   - Without Streaming
+   - Parallel Tool Calling
+
+   > Note: Tool choice and OpenAI-compliant streaming for function calling are currently under development.
+
+   Here's an example of how to use function calling with FastMLX:
+
+   ```python
+   import requests
+   import json
+
+   url = "http://localhost:8000/v1/chat/completions"
+   headers = {"Content-Type": "application/json"}
+   data = {
+     "model": "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit",
+     "messages": [
+       {
+         "role": "user",
+         "content": "What's the weather like in San Francisco and Washington?"
+       }
+     ],
+     "tools": [
+       {
+         "name": "get_current_weather",
+         "description": "Get the current weather",
+         "parameters": {
+           "type": "object",
+           "properties": {
+             "location": {
+               "type": "string",
+               "description": "The city and state, e.g. San Francisco, CA"
+             },
+             "format": {
+               "type": "string",
+               "enum": ["celsius", "fahrenheit"],
+               "description": "The temperature unit to use. Infer this from the user's location."
+             }
+           },
+           "required": ["location", "format"]
+         }
+       }
+     ],
+     "max_tokens": 150,
+     "temperature": 0.7,
+     "stream": False,
+   }
+
+   response = requests.post(url, headers=headers, data=json.dumps(data))
+   print(response.json())
+   ```
+
+   This example demonstrates how to use the `get_current_weather` tool with the Llama 3.1 model. The API will process the user's question and use the provided tool to fetch the required information.
+
+   Please note that while streaming is available for regular text generation, the streaming implementation for function calling is still in development and does not yet fully comply with the OpenAI specification.
+
+5. **Listing Available Models**
 
    To see all vision and language models supported by MLX:
 
@@ -234,7 +300,7 @@
    print(response.json())
    ```
 
-5. **List Available Models**
+6. **List Available Models**
 
    You can add new models to the API:
 
@@ -250,7 +316,7 @@
    print(response.json())
    ```
 
-6. **Listing Available Models**
+7. **Listing Available Models**
 
    To see all available models:
 
@@ -262,7 +328,7 @@
    print(response.json())
    ```
 
-7. **Delete Models**
+8. **Delete Models**
 
    To remove any models loaded to memory:
 

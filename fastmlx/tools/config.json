@@ -1,0 +1,29 @@
+{
+  "models": {
+    "arcee-agent": {
+      "prompt_template": "arcee_agent.j2",
+      "parallel_tool_calling": true,
+      "tool_role": "tool"
+    },
+    "command-r-plus": {
+      "prompt_template": "command-r-plus.j2",
+      "parallel_tool_calling": true,
+      "tool_role": "tool"
+    },
+    "llama-3_1": {
+      "prompt_template": "llama-3_1.j2",
+      "parallel_tool_calling": true,
+      "eom_token": ["<|eom_id|>"],
+      "tool_role": "ipython"
+    },
+    "xlam": {
+      "prompt_template": "xlam.j2",
+      "parallel_tool_calling": true,
+      "tool_role": "tool"
+    },
+    "default": {
+      "prompt_template": "llama3_1.j2",
+      "parallel_tool_calling": false
+    }
+  }
+}

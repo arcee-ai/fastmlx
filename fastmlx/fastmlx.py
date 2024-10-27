@@ -8,26 +8,33 @@ It offers an OpenAI-compatible API for chat completions and model management.
 import argparse
 import asyncio
 import os
-import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from urllib.parse import unquote
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field
+
+from .types.chat.chat_completion import (
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatMessage,
+)
+from .types.model import SupportedModels
 
 try:
-    import mlx.core as mx
-    from mlx_lm import generate as lm_generate
     from mlx_vlm import generate as vlm_generate
-    from mlx_vlm.prompt_utils import get_message_json
+    from mlx_vlm.prompt_utils import apply_chat_template as apply_vlm_chat_template
     from mlx_vlm.utils import load_config
 
     from .utils import (
         MODEL_REMAPPING,
         MODELS,
-        SupportedModels,
+        apply_lm_chat_template,
+        get_eom_token,
+        get_tool_prompt,
+        handle_function_calls,
+        lm_generate,
         lm_stream_generator,
         load_lm_model,
         load_vlm_model,
@@ -66,32 +73,6 @@ class ModelProvider:
     async def get_available_models(self):
         async with self.lock:
             return list(self.models.keys())
-
-
-class ChatMessage(BaseModel):
-
-    role: str
-    content: str
-
-
-class ChatCompletionRequest(BaseModel):
-
-    model: str
-    messages: List[ChatMessage]
-    image: Optional[str] = Field(default=None)
-    max_tokens: Optional[int] = Field(default=100)
-    stream: Optional[bool] = Field(default=False)
-    temperature: Optional[float] = Field(default=0.2)
-
-
-class ChatCompletionResponse(BaseModel):
-
-    id: str
-    object: str = "chat.completion"
-    created: int
-    model: str
-    choices: List[dict]
-
 
 app = FastAPI()
 
@@ -153,40 +134,39 @@ async def chat_completion(request: ChatCompletionRequest):
     model = model_data["model"]
     config = model_data["config"]
     model_type = MODEL_REMAPPING.get(config["model_type"], config["model_type"])
+    stop_words = get_eom_token(request.model)
 
     if model_type in MODELS["vlm"]:
         processor = model_data["processor"]
         image_processor = model_data["image_processor"]
 
-        image = request.image
-
+        image_url = None
         chat_messages = []
 
         for msg in request.messages:
-            if msg.role == "user":
-                chat_messages.append(
-                    get_message_json(config["model_type"], msg.content)
-                )
-            else:
+            if isinstance(msg.content, str):
                 chat_messages.append({"role": msg.role, "content": msg.content})
+            elif isinstance(msg.content, list):
+                text_content = ""
+                for content_part in msg.content:
+                    if content_part.type == "text":
+                        text_content += content_part.text + " "
+                    elif content_part.type == "image_url":
+                        image_url = content_part.image_url["url"]
+                chat_messages.append(
+                    {"role": msg.role, "content": text_content.strip()}
+                )
 
-        prompt = ""
-        if "chat_template" in processor.__dict__.keys():
-            prompt = processor.apply_chat_template(
-                chat_messages,
-                tokenize=False,
-                add_generation_prompt=True,
+        if not image_url and model_type in MODELS["vlm"]:
+            raise HTTPException(
+                status_code=400, detail="Image URL not provided for VLM model"
             )
 
-        elif "tokenizer" in processor.__dict__.keys():
-            if model.config.model_type != "paligemma":
-                prompt = processor.tokenizer.apply_chat_template(
-                    chat_messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
-            else:
-                prompt = request.messages[-1].content
+        prompt = ""
+        if model.config.model_type != "paligemma":
+            prompt = apply_vlm_chat_template(processor, config, chat_messages)
+        else:
+            prompt = chat_messages[-1]["content"]
 
         if stream:
             return StreamingResponse(
@@ -194,7 +174,7 @@ async def chat_completion(request: ChatCompletionRequest):
                     model,
                     request.model,
                     processor,
-                    request.image,
+                    image_url,
                     prompt,
                     image_processor,
                     request.max_tokens,
@@ -207,7 +187,7 @@ async def chat_completion(request: ChatCompletionRequest):
             output = vlm_generate(
                 model,
                 processor,
-                image,
+                image_url,
                 prompt,
                 image_processor,
                 max_tokens=request.max_tokens,
@@ -216,20 +196,33 @@ async def chat_completion(request: ChatCompletionRequest):
             )
 
     else:
+        # Add function calling information to the prompt
+        if request.tools and "firefunction-v2" not in request.model:
+            # Handle system prompt
+            if request.messages and request.messages[0].role == "system":
+                pass
+            else:
+                # Generate system prompt based on model and tools
+                prompt, user_role = get_tool_prompt(
+                    request.model,
+                    [tool.model_dump() for tool in request.tools],
+                    request.messages[-1].content,
+                )
+
+                if user_role:
+                    request.messages[-1].content = prompt
+                else:
+                    # Insert the system prompt at the beginning of the messages
+                    request.messages.insert(
+                        0, ChatMessage(role="system", content=prompt)
+                    )
+
         tokenizer = model_data["tokenizer"]
+
         chat_messages = [
             {"role": msg.role, "content": msg.content} for msg in request.messages
         ]
-        if tokenizer.chat_template is not None and hasattr(
-            tokenizer, "apply_chat_template"
-        ):
-            prompt = tokenizer.apply_chat_template(
-                chat_messages,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-        else:
-            prompt = request.messages[-1].content
+        prompt = apply_lm_chat_template(tokenizer, chat_messages, request)
 
         if stream:
             return StreamingResponse(
@@ -240,29 +233,22 @@ async def chat_completion(request: ChatCompletionRequest):
                     prompt,
                     request.max_tokens,
                     request.temperature,
+                    stop_words=stop_words,
                 ),
                 media_type="text/event-stream",
             )
         else:
             output = lm_generate(
-                model, tokenizer, prompt, request.max_tokens, False, request.temperature
+                model,
+                tokenizer,
+                prompt,
+                request.max_tokens,
+                temp=request.temperature,
+                stop_words=stop_words,
             )
 
-    # Prepare the response
-    response = ChatCompletionResponse(
-        id=f"chatcmpl-{os.urandom(4).hex()}",
-        created=int(time.time()),
-        model=request.model,
-        choices=[
-            {
-                "index": 0,
-                "message": {"role": "assistant", "content": output},
-                "finish_reason": "stop",
-            }
-        ],
-    )
-
-    return response
+    # Parse the output to check for function calls
+    return handle_function_calls(output, request)
 
 
 @app.get("/v1/supported_models", response_model=SupportedModels)
@@ -348,7 +334,7 @@ def run():
     parser.add_argument(
         "--workers",
         type=int_or_float,
-        default=calculate_default_workers,
+        default=calculate_default_workers(),
         help="""Number of workers. Overrides the `FASTMLX_NUM_WORKERS` env variable.
         Can be either an int or a float.
         If an int, it will be the number of workers to use.
@@ -364,7 +350,6 @@ def run():
     )
 
     args = parser.parse_args()
-
     if isinstance(args.workers, float):
         args.workers = max(1, int(os.cpu_count() * args.workers))
 
