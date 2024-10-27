@@ -2,7 +2,7 @@ Here are some projects built by the community that use FastMLX:
 
 1. FastMLX-MineCraft by Mathieu
 2. MLX Chat by Nils Durner
-3. Home Hub by Prince Canuma
+3. AI Home Hub by Prince Canuma
 
 
 ### PROJECTS IN DETAIL
@@ -18,4 +18,4 @@ Chat interface for MLX for on-device Language Model use on Apple Silicon. Built 
 ####[Home Hub](https://x.com/Prince_Canuma/status/1813689110089101623) by [Prince Canuma](https://x.com/Prince_Canuma)
 Turning your Mac into an AI home server.
 
-![Home Hub](./homehub.png)
+![AI Home Hub](./homehub.png)
