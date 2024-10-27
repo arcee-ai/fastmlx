@@ -94,9 +94,14 @@ nav:
     - Installation: installation.md
     - Usage: usage.md
     - CLI Reference: cli_reference.md
-    - Contributing: contributing.md
-    - Changelog: changelog.md
-    - Report Issues: https://github.com/Blaizzy/fastmlx/issues
     - Examples:
-        - Introduction: examples/intro.ipynb
+        - Multi-Modal Chatbot: examples/chatbot.md
+        - Function Calling: examples/function_calling.md
+
+    - Managing Models: models.md
     - API Reference: endpoints.md
+    - Contributing: contributing.md
+    - Community Projects: community_projects.md
+    - Report Issues: https://github.com/Blaizzy/fastmlx/issues
+    - Changelog: changelog.md
+       

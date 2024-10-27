@@ -1,6 +1,6 @@
 # Join us in making a difference!
 
-We are thrilled to welcome your contributions, and would love to see how you can make our project even better. Your input is invaluable to us, and we ensure that all contributors receive recognition for their efforts.
+Your contributions are always welcome and we would love to see how you can make our project even better. Your input is invaluable to us, and we ensure that all contributors receive recognition for their efforts.
 
 ## Ways to contribute
 
@@ -22,7 +22,7 @@ Look through the GitHub issues for bugs. Anything tagged with `bug` and `help wa
 
 ### Implement Features
 
-Look through the GitHub issues for features. If anything tagged `enhancement` and `help wanted` catches your eye, dive in and start coding. Your ideas can become a reality in FASTMLX!
+Look through the GitHub issues for features. If anything tagged `enhancement` and `help wanted` catches your eye, dive in and start coding. Your ideas can become a reality in FastMLX!
 
 ### Write Documentation
 
@@ -40,7 +40,7 @@ Proposing a feature?
 
 ## How to get Started!
 
-Ready to contribute? Follow these simple steps to set up fastmlx for local development and start making a difference.
+Ready to contribute? Follow these simple steps to set up FastMLX for local development and start making a difference.
 
 1.  Fork the repository.
     -    Head over to the [fastmlx GitHub repo](<https://github.com/Blaizzy/fastmlx/>) and click the Fork button to create your copy of the repository.
@@ -53,7 +53,7 @@ Ready to contribute? Follow these simple steps to set up fastmlx for local devel
     ```
 
 3.  Set Up Your Development Environment
-    -    Install your local copy of fastmlx into a virtual environment. If you’re using `virtualenvwrapper`, follow these steps:
+    -    Install your local copy of FastMLX into a virtual environment. If you’re using `virtualenvwrapper`, follow these steps:
     
     ```shell
     $ mkvirtualenv fastmlx
@@ -97,7 +97,7 @@ Ready to contribute? Follow these simple steps to set up fastmlx for local devel
     ```
 
 7.  Submit a Pull Request
-    -    Head back to the fastmlx GitHub repo and open a pull request. We’ll review your changes, provide feedback, and merge them once everything is ready.
+    -    Head back to the FastMLX GitHub repo and open a pull request. We’ll review your changes, provide feedback, and merge them once everything is ready.
 
 ## Pull Request Guidelines
 

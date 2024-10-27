@@ -1,26 +1,20 @@
 # Usage
 
-This guide covers the installation, server setup, and usage of FastMLX, including making API calls and managing models.
+This guide covers the server setup, and usage of FastMLX, including making API calls and managing models.
 
-## Installation
+## 1. Installation
+Follow the [installation guide](installation.md) to install FastMLX.
 
-To install FastMLX, run the following command:
-
-```bash
-pip install fastmlx
-```
-
-## Running the Server
-
-There are two ways to start the FastMLX server:
-
-1. Using the `fastmlx` command:
+## 2. Running the server
+Start the FastMLX server with the following command:
 
    ```bash
    fastmlx
    ```
 
-2. Using `uvicorn` directly:
+or 
+
+Using `uvicorn` directly:
 
    ```bash
    uvicorn fastmlx:app --reload --workers 0
@@ -69,12 +63,13 @@ fastmlx --workers 1.0
 3. **Resource Usage**: Monitor your system's resource usage to find the optimal number of workers for your specific hardware and application needs.
 4. **Load Balancing**: When running with multiple workers, incoming requests are automatically load-balanced across the worker processes.
 
-## Making API Calls
+## 3. Making API Calls
 
-FastMLX provides an OpenAI-compatible API for both Vision Language Models (VLMs) and Language Models (LMs).
+Use the API similar to OpenAI's chat completions:
 
 ### Vision Language Model
 
+#### Without Streaming
 Here's an example of how to use a Vision Language Model:
 
 ```python
@@ -94,7 +89,60 @@ response = requests.post(url, headers=headers, data=json.dumps(data))
 print(response.json())
 ```
 
+#### Without Streaming
+```python
+import requests
+import json
+
+def process_sse_stream(url, headers, data):
+   response = requests.post(url, headers=headers, json=data, stream=True)
+
+   if response.status_code != 200:
+      print(f"Error: Received status code {response.status_code}")
+      print(response.text)
+      return
+
+   full_content = ""
+
+   try:
+      for line in response.iter_lines():
+            if line:
+               line = line.decode('utf-8')
+               if line.startswith('data: '):
+                  event_data = line[6:]  # Remove 'data: ' prefix
+                  if event_data == '[DONE]':
+                        print("\nStream finished. ✅")
+                        break
+                  try:
+                        chunk_data = json.loads(event_data)
+                        content = chunk_data['choices'][0]['delta']['content']
+                        full_content += content
+                        print(content, end='', flush=True)
+                  except json.JSONDecodeError:
+                        print(f"\nFailed to decode JSON: {event_data}")
+                  except KeyError:
+                        print(f"\nUnexpected data structure: {chunk_data}")
+
+   except KeyboardInterrupt:
+      print("\nStream interrupted by user.")
+   except requests.exceptions.RequestException as e:
+      print(f"\nAn error occurred: {e}")
+
+if __name__ == "__main__":
+   url = "http://localhost:8000/v1/chat/completions"
+   headers = {"Content-Type": "application/json"}
+   data = {
+      "model": "mlx-community/nanoLLaVA-1.5-4bit",
+      "image": "http://images.cocodataset.org/val2017/000000039769.jpg",
+      "messages": [{"role": "user", "content": "What are these?"}],
+      "max_tokens": 500,
+      "stream": True
+   }
+   process_sse_stream(url, headers, data)
+```
 ### Language Model
+
+#### Without Streaming
 
 Here's an example of how to use a Language Model:
 
@@ -114,117 +162,56 @@ response = requests.post(url, headers=headers, data=json.dumps(data))
 print(response.json())
 ```
 
-### Streaming Responses
-
-Both VLMs and LMs support streaming responses. Here's an example of how to handle streaming:
+#### With Streaming
 
 ```python
 import requests
 import json
 
 def process_sse_stream(url, headers, data):
-    response = requests.post(url, headers=headers, json=data, stream=True)
+   response = requests.post(url, headers=headers, json=data, stream=True)
 
-    if response.status_code != 200:
-        print(f"Error: Received status code {response.status_code}")
-        print(response.text)
-        return
+   if response.status_code != 200:
+      print(f"Error: Received status code {response.status_code}")
+      print(response.text)
+      return
 
-    full_content = ""
+   full_content = ""
 
-    try:
-        for line in response.iter_lines():
+   try:
+      for line in response.iter_lines():
             if line:
-                line = line.decode('utf-8')
-                if line.startswith('data: '):
-                    event_data = line[6:]  # Remove 'data: ' prefix
-                    if event_data == '[DONE]':
+               line = line.decode('utf-8')
+               if line.startswith('data: '):
+                  event_data = line[6:]  # Remove 'data: ' prefix
+                  if event_data == '[DONE]':
                         print("\nStream finished. ✅")
                         break
-                    try:
+                  try:
                         chunk_data = json.loads(event_data)
                         content = chunk_data['choices'][0]['delta']['content']
                         full_content += content
                         print(content, end='', flush=True)
-                    except json.JSONDecodeError:
+                  except json.JSONDecodeError:
                         print(f"\nFailed to decode JSON: {event_data}")
-                    except KeyError:
+                  except KeyError:
                         print(f"\nUnexpected data structure: {chunk_data}")
 
-    except KeyboardInterrupt:
-        print("\nStream interrupted by user.")
-    except requests.exceptions.RequestException as e:
-        print(f"\nAn error occurred: {e}")
+   except KeyboardInterrupt:
+      print("\nStream interrupted by user.")
+   except requests.exceptions.RequestException as e:
+      print(f"\nAn error occurred: {e}")
 
 if __name__ == "__main__":
-    url = "http://localhost:8000/v1/chat/completions"
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "model": "mlx-community/gemma-2-9b-it-4bit",
-        "messages": [{"role": "user", "content": "Hi, how are you?"}],
-        "max_tokens": 500,
-        "stream": True
-    }
-    process_sse_stream(url, headers, data)
-```
-
-## Managing Models
-
-FastMLX provides endpoints for managing models.
-
-### Listing Supported Models
-
-To see all vision and language models supported by MLX:
-
-```python
-import requests
-
-url = "http://localhost:8000/v1/supported_models"
-response = requests.get(url)
-print(response.json())
-```
-
-### Adding New Models
-
-You can add new models to the API:
-
-```python
-import requests
-
-url = "http://localhost:8000/v1/models"
-params = {
-    "model_name": "hf-repo-or-path",
-}
-
-response = requests.post(url, params=params)
-print(response.json())
-```
-
-### Listing Available Models
-
-To see all available models:
-
-```python
-import requests
-
-url = "http://localhost:8000/v1/models"
-response = requests.get(url)
-print(response.json())
-```
-
-### Removing Models
-
-To remove any models loaded to memory:
-
-```python
-import requests
-
-url = "http://localhost:8000/v1/models"
-params = {
-   "model_name": "hf-repo-or-path",
-}
-response = requests.delete(url, params=params)
-print(response)
+   url = "http://localhost:8000/v1/chat/completions"
+   headers = {"Content-Type": "application/json"}
+   data = {
+      "model": "mlx-community/gemma-2-9b-it-4bit",
+      "messages": [{"role": "user", "content": "Hi, how are you?"}],
+      "max_tokens": 500,
+      "stream": True
+   }
+   process_sse_stream(url, headers, data)
 ```
 
 For more detailed API documentation, please refer to the [API Reference](endpoints.md) section.

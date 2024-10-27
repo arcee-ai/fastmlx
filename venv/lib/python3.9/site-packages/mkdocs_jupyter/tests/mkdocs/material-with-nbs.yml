@@ -1,0 +1,42 @@
+site_name: material-site-with-notebooks
+site_description: mkdocs-jupyter test site
+
+nav:
+  - Home: index.md
+  - Demo (nb): demo.ipynb
+  - Equations (nb): variational-inference.ipynb
+  - Ruby (nb): ruby.ipynb
+
+plugins:
+  - mkdocs-jupyter:
+      include_source: true
+      # data_files:
+      #   variational-inference.ipynb:
+      #     - docs/data/test.xlsx
+      # highlight_extra_classes: not-prose
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - codehilite:
+      guess_lang: false
+  - pymdownx.highlight:
+      use_pygments: true
+  - pymdownx.arithmatex
+
+theme:
+  name: material
+  custom_dir: overrides
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+
+extra_css:
+  - extras/material.css
+  - extras/styles.css

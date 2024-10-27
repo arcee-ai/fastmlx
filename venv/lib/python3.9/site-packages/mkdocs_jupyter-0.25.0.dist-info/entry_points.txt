@@ -1,0 +1,2 @@
+[mkdocs.plugins]
+mkdocs-jupyter = mkdocs_jupyter.plugin:Plugin

@@ -1,4 +1,4 @@
-# Welcome to FastMLX
+# FastMLX
 
 [![PyPI version](https://img.shields.io/pypi/v/fastmlx.svg)](https://pypi.python.org/pypi/fastmlx)
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/fastmlx.svg)](https://anaconda.org/conda-forge/fastmlx)
@@ -9,26 +9,26 @@
 
 ## Key Features
 
-- **Seamless OPENAI Integration**: Effortlessly integrate existing applications that use OpenAI's API.
-- **Dynamic Model Loading**: Flexibly load MLX models on-the-fly or use pre-loaded models for optimal performance.
-- **Multiple Model Support**: Compatible with various MLX model architectures.
-- **Image Processing**: Process both text and image inputs for versatile model interactions.
+- **OpenAI-compatible API**: Easily integrate with existing applications that use OpenAI's API.
+- **Dynamic Model Loading**: Load MLX models on-the-fly or use pre-loaded models for better performance.
+- **Support for Multiple Model Types**: Compatible with various MLX model architectures.
+- **Image Processing Capabilities**: Handle both text and image inputs for versatile model interactions.
 - **Efficient Resource Management**: Optimized for high-performance and scalability.
-- **Robust Error Handling**: Designed for reliability in production environments.
-- **Highly Customizable**: Extend and tailor the framework to fit specific use cases and model requirements.
+- **Error Handling**: Robust error management for production environments.
+- **Customizable**: Easily extendable to accommodate specific use cases and model types.
 
 ## Quick Start
 
-[Get started with FASTMLX](installation.md) - Learn how to install and set up FastMLX in your environment.
+[Get started with FastMLX](installation.md): Learn how to install and set up FastMLX in your environment.
 
-[Explore Tutorials]() - Hands-on guides for building specific applications, such as:
-  - 
-  - 
-  - 
+Explore Examples: Hands-on guides, such as:
+
+- [Chatbot application](examples/chatbot.md)
+- [Function calling](examples/function_calling.md)
 
 ### Installation
 
-Install **FASTMLX** on your system by running the following command:
+Install **FastMLX** on your system by running the following command:
 
 ```
 pip install -U fastmlx
