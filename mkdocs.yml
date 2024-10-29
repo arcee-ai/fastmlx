@@ -1,6 +1,7 @@
-site_name: fastmlx
+site_name: FastMLX
 site_description: FastMLX is a high performance production ready API to host MLX models.
 site_author: Blaizzy
+repo_name: Blaizzy/fastmlx
 site_url: https://Blaizzy.github.io/fastmlx
 repo_url: https://github.com/Blaizzy/fastmlx
 
@@ -9,13 +10,12 @@ copyright: "Copyright &copy; 2024 - 2024 Prince Canuma"
 theme:
     palette:
         - scheme: default
-          #   primary: blue
-          #   accent: indigo
+          primary: black
           toggle:
               icon: material/toggle-switch-off-outline
               name: Switch to dark mode
         - scheme: slate
-          primary: indigo
+          primary: black
           accent: indigo
           toggle:
               icon: material/toggle-switch
@@ -29,8 +29,11 @@ theme:
         - navigation.instant
         - navigation.tracking
         - navigation.top
+        - navigation.footer  # Adds a "Next" and "Previous" navigation to the footer
         - search.highlight
         - search.share
+        - content.code.copy  # Adds a copy button to code blocks
+       
     custom_dir: "docs/overrides"
     font:
         text: Google Sans
@@ -39,10 +42,6 @@ theme:
 plugins:
     - search
     - mkdocstrings
-    - git-revision-date
-    - git-revision-date-localized:
-          enable_creation_date: true
-          type: timeago
     # - pdf-export
     - mkdocs-jupyter:
           include_source: True
@@ -51,7 +50,7 @@ plugins:
           allow_errors: false
           ignore: ["conf.py"]
           execute_ignore: ["*ignore.ipynb"]
-          
+
 markdown_extensions:
     - admonition
     - abbr
@@ -66,6 +65,25 @@ markdown_extensions:
     - toc:
           permalink: true
 
+extra:
+    social:
+        - icon: fontawesome/brands/github
+          link: https://github.com/Blaizzy
+        - icon: fontawesome/brands/twitter
+          link: https://twitter.com/Prince_Canuma
+    version:
+        provider: mike  # Uncomment if you decide to use mike for versioning
+    consent:
+        title: Cookie consent
+        description: >-
+          We use cookies to recognize your repeated visits and preferences, as well
+          as to measure the effectiveness of our documentation and whether users
+          find what they're searching for. With your consent, you're helping us to
+          make our documentation better.
+
+extra_css:
+    - stylesheets/extra.css
+
 # extra:
 #     analytics:
 #         provider: google
@@ -75,12 +93,15 @@ nav:
     - Home: index.md
     - Installation: installation.md
     - Usage: usage.md
-    - Contributing: contributing.md
-    - FAQ: faq.md
-    - Changelog: changelog.md
-    - Report Issues: https://github.com/Blaizzy/fastmlx/issues
+    - CLI Reference: cli_reference.md
     - Examples:
-        - examples/intro.ipynb
-    - API Reference:
-          - fastmlx module: fastmlx.md
-          - common module: common.md
+        - Multi-Modal Chatbot: examples/chatbot.md
+        - Function Calling: examples/function_calling.md
+
+    - Managing Models: models.md
+    - API Reference: endpoints.md
+    - Contributing: contributing.md
+    - Community Projects: community_projects.md
+    - Report Issues: https://github.com/Blaizzy/fastmlx/issues
+    - Changelog: changelog.md
+       

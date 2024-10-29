@@ -2,20 +2,43 @@
 
 ## Stable release
 
-To install fastmlx, run this command in your terminal:
+To install the latest stable release of FastMLX, use the following command:
 
 ```
-pip install fastmlx
+pip install -U fastmlx
 ```
 
-This is the preferred method to install fastmlx, as it will always install the most recent stable release.
+This is the recommended method to install **FastMLX**, as it will always install the most recent stable release.
 
-If you don't have [pip](https://pip.pypa.io) installed, this [Python installation guide](http://docs.python-guide.org/en/latest/starting/installation/) can guide you through the process.
+If [pip](https://pip.pypa.io) isn't installed, you can follow the [Python installation guide](http://docs.python-guide.org/en/latest/starting/installation/) to set it up.
 
-## From sources
+## Installation from Sources
 
-To install fastmlx from sources, run this command in your terminal:
+To install **FastMLX** directly from the source code, run this command in your terminal:
 
 ```
 pip install git+https://github.com/Blaizzy/fastmlx
 ```
+## Running the Server
+
+There are two ways to start the FastMLX server:
+
+Using the `fastmlx` command:
+
+   ```bash
+   fastmlx
+   ```
+
+or
+   
+Using `uvicorn` directly:
+
+   ```bash
+   uvicorn fastmlx:app --reload --workers 0
+   ```
+
+   > WARNING: The `--reload` flag should not be used in production. It is only intended for development purposes.
+   
+### Additional Notes
+
+- **Dependencies**: Ensure that you have the required dependencies installed. FastMLX relies on several libraries, which `pip` will handle automatically.

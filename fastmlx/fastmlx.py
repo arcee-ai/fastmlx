@@ -1,4 +1,9 @@
-"""Main module."""
+"""Main module for FastMLX API server.
+
+This module provides a FastAPI-based server for hosting MLX models,
+including Vision Language Models (VLMs) and Language Models (LMs).
+It offers an OpenAI-compatible API for chat completions and model management.
+"""
 
 import argparse
 import asyncio
@@ -74,8 +79,8 @@ class ModelProvider:
 app = FastAPI()
 
 
-# Custom type function
 def int_or_float(value):
+
     try:
         return int(value)
     except ValueError:
@@ -86,7 +91,6 @@ def int_or_float(value):
 
 
 def calculate_default_workers(workers: int = 2) -> int:
-    """Calculate the default number of workers based on environment variable."""
     if num_workers_env := os.getenv("FASTMLX_NUM_WORKERS"):
         try:
             workers = int(num_workers_env)
@@ -112,6 +116,18 @@ model_provider = ModelProvider()
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def chat_completion(request: ChatCompletionRequest):
+    """
+    Handle chat completion requests for both VLM and LM models.
+
+    Args:
+        request (ChatCompletionRequest): The chat completion request.
+
+    Returns:
+        ChatCompletionResponse (ChatCompletionResponse): The generated chat completion response.
+
+    Raises:
+        HTTPException (str): If MLX library is not available.
+    """
     if not MLX_AVAILABLE:
         raise HTTPException(status_code=500, detail="MLX library not available")
 
@@ -241,6 +257,9 @@ async def chat_completion(request: ChatCompletionRequest):
 async def get_supported_models():
     """
     Get a list of supported model types for VLM and LM.
+
+    Returns:
+        JSONResponse (json): A JSON response containing the supported models.
     """
     return JSONResponse(content=MODELS)
 
@@ -266,12 +285,33 @@ async def list_models():
 
 @app.post("/v1/models")
 async def add_model(model_name: str):
+    """
+    Add a new model to the API.
+
+    Args:
+        model_name (str): The name of the model to add.
+
+    Returns:
+        dict (dict): A dictionary containing the status of the operation.
+    """
     model_provider.load_model(model_name)
     return {"status": "success", "message": f"Model {model_name} added successfully"}
 
 
 @app.delete("/v1/models")
 async def remove_model(model_name: str):
+    """
+    Remove a model from the API.
+
+    Args:
+        model_name (str): The name of the model to remove.
+
+    Returns:
+        Response (str): A 204 No Content response if successful.
+
+    Raises:
+        HTTPException (str): If the model is not found.
+    """
     model_name = unquote(model_name).strip('"')
     removed = await model_provider.remove_model(model_name)
     if removed:
