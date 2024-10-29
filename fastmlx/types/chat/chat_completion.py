@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -20,9 +20,15 @@ class Function(BaseModel):
     parameters: Dict[str, Any]
 
 
+class ChatCompletionContentPartParam(BaseModel):
+    type: Literal["text", "image_url"]
+    text: str = None
+    image_url: dict = None
+
+
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: Union[str, List[ChatCompletionContentPartParam]]
 
 
 class Usage(BaseModel):

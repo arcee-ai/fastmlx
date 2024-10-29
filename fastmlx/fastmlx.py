@@ -1,4 +1,9 @@
-"""Main module."""
+"""Main module for FastMLX API server.
+
+This module provides a FastAPI-based server for hosting MLX models,
+including Vision Language Models (VLMs) and Language Models (LMs).
+It offers an OpenAI-compatible API for chat completions and model management.
+"""
 
 import argparse
 import asyncio
@@ -74,8 +79,8 @@ class ModelProvider:
 app = FastAPI()
 
 
-# Custom type function
 def int_or_float(value):
+
     try:
         return int(value)
     except ValueError:
@@ -86,7 +91,6 @@ def int_or_float(value):
 
 
 def calculate_default_workers(workers: int = 2) -> int:
-    """Calculate the default number of workers based on environment variable."""
     if num_workers_env := os.getenv("FASTMLX_NUM_WORKERS"):
         try:
             workers = int(num_workers_env)
@@ -112,6 +116,18 @@ model_provider = ModelProvider()
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def chat_completion(request: ChatCompletionRequest):
+    """
+    Handle chat completion requests for both VLM and LM models.
+
+    Args:
+        request (ChatCompletionRequest): The chat completion request.
+
+    Returns:
+        ChatCompletionResponse (ChatCompletionResponse): The generated chat completion response.
+
+    Raises:
+        HTTPException (str): If MLX library is not available.
+    """
     if not MLX_AVAILABLE:
         raise HTTPException(status_code=500, detail="MLX library not available")
 
@@ -126,21 +142,33 @@ async def chat_completion(request: ChatCompletionRequest):
         processor = model_data["processor"]
         image_processor = model_data["image_processor"]
 
-        image = request.image
-
+        image_url = None
         chat_messages = []
 
         for msg in request.messages:
-            if msg.role == "user":
-                chat_messages.append(msg.content)
-            else:
+            if isinstance(msg.content, str):
                 chat_messages.append({"role": msg.role, "content": msg.content})
+            elif isinstance(msg.content, list):
+                text_content = ""
+                for content_part in msg.content:
+                    if content_part.type == "text":
+                        text_content += content_part.text + " "
+                    elif content_part.type == "image_url":
+                        image_url = content_part.image_url["url"]
+                chat_messages.append(
+                    {"role": msg.role, "content": text_content.strip()}
+                )
+
+        if not image_url and model_type in MODELS["vlm"]:
+            raise HTTPException(
+                status_code=400, detail="Image URL not provided for VLM model"
+            )
 
         prompt = ""
         if model.config.model_type != "paligemma":
             prompt = apply_vlm_chat_template(processor, config, chat_messages)
         else:
-            prompt = request.messages[-1].content
+            prompt = chat_messages[-1]["content"]
 
         if stream:
             return StreamingResponse(
@@ -148,7 +176,7 @@ async def chat_completion(request: ChatCompletionRequest):
                     model,
                     request.model,
                     processor,
-                    request.image,
+                    image_url,
                     prompt,
                     image_processor,
                     request.max_tokens,
@@ -162,7 +190,7 @@ async def chat_completion(request: ChatCompletionRequest):
             output = vlm_generate(
                 model,
                 processor,
-                image,
+                image_url,
                 prompt,
                 image_processor,
                 max_tokens=request.max_tokens,
@@ -231,23 +259,53 @@ async def chat_completion(request: ChatCompletionRequest):
 async def get_supported_models():
     """
     Get a list of supported model types for VLM and LM.
+
+    Returns:
+        JSONResponse (json): A JSON response containing the supported models.
     """
     return JSONResponse(content=MODELS)
 
 
 @app.get("/v1/models")
 async def list_models():
+    """
+    List all available (loaded) models.
+
+    Returns:
+        dict (dict): A dictionary containing the list of available models.
+    """
     return {"models": await model_provider.get_available_models()}
 
 
 @app.post("/v1/models")
 async def add_model(model_name: str):
+    """
+    Add a new model to the API.
+
+    Args:
+        model_name (str): The name of the model to add.
+
+    Returns:
+        dict (dict): A dictionary containing the status of the operation.
+    """
     model_provider.load_model(model_name)
     return {"status": "success", "message": f"Model {model_name} added successfully"}
 
 
 @app.delete("/v1/models")
 async def remove_model(model_name: str):
+    """
+    Remove a model from the API.
+
+    Args:
+        model_name (str): The name of the model to remove.
+
+    Returns:
+        Response (str): A 204 No Content response if successful.
+
+    Raises:
+        HTTPException (str): If the model is not found.
+    """
     model_name = unquote(model_name).strip('"')
     removed = await model_provider.remove_model(model_name)
     if removed:
