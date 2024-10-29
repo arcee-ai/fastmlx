@@ -1,4 +1,0 @@
-
-# Endpoints
-
-::: fastmlx
