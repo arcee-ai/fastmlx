@@ -262,6 +262,29 @@ def handle_function_calls(
         except Exception as e:
             print(f"Error parsing functools call: {e}")
 
+    # New: Check for Qwen-style <tool_call> function calls
+    elif "<tool_call>" in output:
+        try:
+            # Find all <tool_call>...</tool_call> blocks
+            qwen_calls = re.findall(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", output, re.DOTALL)
+            for call_str in qwen_calls:
+                call_data = json.loads(call_str)
+                tool_calls.append(
+                    ToolCall(
+                        id=f"call_{os.urandom(4).hex()}",
+                        function=FunctionCall(
+                            name=call_data["name"],
+                            arguments=json.dumps(call_data["arguments"])
+                        ),
+                    )
+                )
+            # Remove all <tool_call>...</tool_call> blocks from the output
+            output = re.sub(r"<tool_call>\s*\{.*?\}\s*</tool_call>", "", output, flags=re.DOTALL).strip()
+        except json.JSONDecodeError as e:
+            print(f"Error parsing Qwen tool calls: {e}")
+        except Exception as e:
+            print(f"Unexpected error parsing Qwen tool calls: {e}")
+
     # Prepare the response
     response = ChatCompletionResponse(
         id=f"chatcmpl-{os.urandom(4).hex()}",

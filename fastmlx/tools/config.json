@@ -21,6 +21,11 @@
       "parallel_tool_calling": true,
       "tool_role": "tool"
     },
+    "qwen2_5": {
+      "prompt_template": "qwen2_5.j2",
+      "parallel_tool_calling": true,
+      "tool_role": "tool"
+    },
     "default": {
       "prompt_template": "llama-3_1.j2",
       "parallel_tool_calling": false
