@@ -7,22 +7,45 @@ It offers an OpenAI-compatible API for chat completions and model management.
 
 import argparse
 import asyncio
+import gc
+import hashlib
+import json
+import logging
 import os
 import time
-from typing import Any, Dict, List
+from datetime import datetime
+from typing import Any, Dict, Generator, List, Callable
 from urllib.parse import unquote
 
-from fastapi import FastAPI, HTTPException, Response
+import mlx
+from fastapi import FastAPI, HTTPException, Response, Request, APIRouter
+from fastapi.routing import APIRoute
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+from huggingface_hub import scan_cache_dir
+from rich.logging import RichHandler
+from rich.console import Console
+from rich.traceback import install
 
 from .types.chat.chat_completion import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChatMessage,
-    Usage,
+    CompletionRequest,
 )
 from .types.model import SupportedModels
+
+# Set up rich logging
+install(show_locals=True)
+console = Console()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, console=console, markup=True)]
+)
+logger = logging.getLogger(__name__)
 
 try:
     from mlx_vlm import generate as vlm_generate
@@ -44,50 +67,92 @@ try:
     )
 
     MLX_AVAILABLE = True
-except ImportError:
-    print("Warning: mlx or mlx_lm not available. Some functionality will be limited.")
+    logger.info("[green]MLX libraries successfully imported[/green]")
+except ImportError as e:
+    logger.error(f"[red]Failed to import MLX libraries: {str(e)}[/red]")
+    logger.warning("[yellow]Some functionality will be limited[/yellow]")
     MLX_AVAILABLE = False
 
+
+class TimedRoute(APIRoute):
+    def get_route_handler(self) -> Callable:
+        original_route_handler = super().get_route_handler()
+
+        async def custom_route_handler(request: Request) -> Response:
+            before = time.time()
+            logger.info(f"[blue]Processing request to {request.url.path}[/blue]")
+
+            response: Response = await original_route_handler(request)
+            duration = time.time() - before
+            response.headers["X-Response-Time"] = str(duration)
+
+            logger.info(f"[green]Request to {request.url.path} completed in {duration:.2f}s[/green]")
+
+            # Pretty-print the JSON response
+            if response.headers.get("Content-Type") == "application/json":
+                try:
+                    logger.debug(f"[cyan]JSON Response: {json.dumps(response.body.decode(), indent=4)}[/cyan]")
+                except json.JSONDecodeError:
+                    logger.warning(f"[yellow]Response is not valid JSON: {response.text()}[/yellow]")
+            else:
+                logger.debug(f"[cyan]Non-JSON Response Content-Type: {response.headers.get('Content-Type')}[/cyan]")
+
+            return response
+
+        return custom_route_handler
+
+
+app = FastAPI()
+router = APIRouter(route_class=TimedRoute)
 
 class ModelProvider:
     def __init__(self):
         self.models: Dict[str, Dict[str, Any]] = {}
         self.lock = asyncio.Lock()
+        logger.info("[green]ModelProvider initialized[/green]")
 
     def load_model(self, model_name: str):
         if model_name not in self.models:
             config = load_config(model_name)
             model_type = MODEL_REMAPPING.get(config["model_type"], config["model_type"])
+
+            start_time = time.time()
             if model_type in MODELS["vlm"]:
+                logger.info(f"[blue]Loading VLM model: {model_name}[/blue]")
                 self.models[model_name] = load_vlm_model(model_name, config)
             else:
+                logger.info(f"[blue]Loading LM model: {model_name}[/blue]")
                 self.models[model_name] = load_lm_model(model_name, config)
+
+            load_time = time.time() - start_time
+            logger.info(f"[green]Model {model_name} loaded successfully in {load_time:.2f}s[/green]")
 
         return self.models[model_name]
 
     async def remove_model(self, model_name: str) -> bool:
         async with self.lock:
             if model_name in self.models:
+                logger.info(f"[blue]Removing model: {model_name}[/blue]")
                 del self.models[model_name]
                 return True
+            logger.warning(f"[yellow]Attempted to remove non-existent model: {model_name}[/yellow]")
             return False
 
     async def get_available_models(self):
         async with self.lock:
-            return list(self.models.keys())
-
-
-app = FastAPI()
+            models = list(self.models.keys())
+            logger.debug(f"[cyan]Available models: {models}[/cyan]")
+            return models
 
 
 def int_or_float(value):
-
     try:
         return int(value)
     except ValueError:
         try:
             return float(value)
         except ValueError:
+            logger.error(f"[red]Invalid value for int_or_float conversion: {value}[/red]")
             raise argparse.ArgumentTypeError(f"{value} is not an int or float")
 
 
@@ -95,13 +160,16 @@ def calculate_default_workers(workers: int = 2) -> int:
     if num_workers_env := os.getenv("FASTMLX_NUM_WORKERS"):
         try:
             workers = int(num_workers_env)
+            logger.info(f"[blue]Using {workers} workers from FASTMLX_NUM_WORKERS env variable[/blue]")
         except ValueError:
             workers = max(1, int(os.cpu_count() * float(num_workers_env)))
+            logger.info(f"[blue]Calculated {workers} workers based on CPU count[/blue]")
     return workers
 
 
 # Add CORS middleware
 def setup_cors(app: FastAPI, allowed_origins: List[str]):
+    logger.info(f"[blue]Setting up CORS middleware with allowed origins: {allowed_origins}[/blue]")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
@@ -115,7 +183,7 @@ def setup_cors(app: FastAPI, allowed_origins: List[str]):
 model_provider = ModelProvider()
 
 
-@app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
+@router.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def chat_completion(request: ChatCompletionRequest):
     """
     Handle chat completion requests for both VLM and LM models.
@@ -129,7 +197,10 @@ async def chat_completion(request: ChatCompletionRequest):
     Raises:
         HTTPException (str): If MLX library is not available.
     """
+    logger.info(f"[blue]Received chat completion request for model: {request.model}[/blue]")
+
     if not MLX_AVAILABLE:
+        logger.error("[red]MLX library not available[/red]")
         raise HTTPException(status_code=500, detail="MLX library not available")
 
     stream = request.stream
@@ -161,6 +232,7 @@ async def chat_completion(request: ChatCompletionRequest):
                 )
 
         if not image_url and model_type in MODELS["vlm"]:
+            logger.error("[red]Image URL not provided for VLM model[/red]")
             raise HTTPException(
                 status_code=400, detail="Image URL not provided for VLM model"
             )
@@ -172,6 +244,7 @@ async def chat_completion(request: ChatCompletionRequest):
             prompt = chat_messages[-1]["content"]
 
         if stream:
+            logger.info("[blue]Starting VLM streaming response[/blue]")
             return StreamingResponse(
                 vlm_stream_generator(
                     model,
@@ -187,6 +260,7 @@ async def chat_completion(request: ChatCompletionRequest):
                 media_type="text/event-stream",
             )
         else:
+            logger.info("[blue]Generating VLM response[/blue]")
             # Generate the response
             output = vlm_generate(
                 model,
@@ -202,6 +276,7 @@ async def chat_completion(request: ChatCompletionRequest):
     else:
         # Add function calling information to the prompt
         if request.tools and "firefunction-v2" not in request.model:
+            logger.debug("[cyan]Processing function calling tools[/cyan]")
             # Handle system prompt
             if request.messages and request.messages[0].role == "system":
                 pass
@@ -229,6 +304,7 @@ async def chat_completion(request: ChatCompletionRequest):
         prompt = apply_lm_chat_template(tokenizer, chat_messages, request)
 
         if stream:
+            logger.info("[blue]Starting LM streaming response[/blue]")
             return StreamingResponse(
                 lm_stream_generator(
                     model,
@@ -243,6 +319,7 @@ async def chat_completion(request: ChatCompletionRequest):
                 media_type="text/event-stream",
             )
         else:
+            logger.info("[blue]Generating LM response[/blue]")
             output, token_length_info = lm_generate(
                 model,
                 tokenizer,
@@ -253,10 +330,11 @@ async def chat_completion(request: ChatCompletionRequest):
             )
 
     # Parse the output to check for function calls
+    logger.info("[blue]Processing function calls in response[/blue]")
     return handle_function_calls(output, request, token_length_info)
 
 
-@app.get("/v1/supported_models", response_model=SupportedModels)
+@router.get("/v1/supported_models", response_model=SupportedModels)
 async def get_supported_models():
     """
     Get a list of supported model types for VLM and LM.
@@ -264,14 +342,16 @@ async def get_supported_models():
     Returns:
         JSONResponse (json): A JSON response containing the supported models.
     """
+    logger.info("[blue]Retrieving supported models[/blue]")
     return JSONResponse(content=MODELS)
 
 
-@app.get("/v1/models")
+@router.get("/v1/models")
 async def list_models():
     """
     Get list of models - provided in OpenAI API compliant format.
     """
+    logger.info("[blue]Retrieving list of loaded models[/blue]")
     models = await model_provider.get_available_models()
     models_data = []
     for model in models:
@@ -286,7 +366,7 @@ async def list_models():
     return {"object": "list", "data": models_data}
 
 
-@app.post("/v1/models")
+@router.post("/v1/models")
 async def add_model(model_name: str):
     """
     Add a new model to the API.
@@ -297,11 +377,12 @@ async def add_model(model_name: str):
     Returns:
         dict (dict): A dictionary containing the status of the operation.
     """
+    logger.info(f"[blue]Adding new model: {model_name}[/blue]")
     model_provider.load_model(model_name)
     return {"status": "success", "message": f"Model {model_name} added successfully"}
 
 
-@app.delete("/v1/models")
+@router.delete("/v1/models")
 async def remove_model(model_name: str):
     """
     Remove a model from the API.
@@ -316,10 +397,13 @@ async def remove_model(model_name: str):
         HTTPException (str): If the model is not found.
     """
     model_name = unquote(model_name).strip('"')
+    logger.info(f"[blue]Attempting to remove model: {model_name}[/blue]")
     removed = await model_provider.remove_model(model_name)
     if removed:
+        logger.info(f"[green]Successfully removed model: {model_name}[/green]")
         return Response(status_code=204)  # 204 No Content - successful deletion
     else:
+        logger.warning(f"[yellow]Failed to remove model: {model_name} (not found)[/yellow]")
         raise HTTPException(status_code=404, detail=f"Model '{model_name}' not found")
 
 
@@ -366,6 +450,7 @@ def run():
     if isinstance(args.workers, float):
         args.workers = max(1, int(os.cpu_count() * args.workers))
 
+    logger.info(f"[green]Starting FastMLX server on {args.host}:{args.port} with {args.workers} workers[/green]")
     setup_cors(app, args.allowed_origins)
 
     import uvicorn
@@ -382,3 +467,6 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+
+app.include_router(router)
