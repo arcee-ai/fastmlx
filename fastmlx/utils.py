@@ -462,7 +462,7 @@ def lm_stream_generator(
                 }
             ],
         )
-        yield f"data: {json.dumps(chunk.model_dump())}\n\n"
+        yield f"data: {chunk.model_dump()}\n\n"
 
     if INCLUDE_USAGE:
         chunk = ChatCompletionChunk(
