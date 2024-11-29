@@ -18,6 +18,8 @@
 - **Efficient Resource Management**: Optimized for high-performance and scalability.
 - **Error Handling**: Robust error management for production environments.
 - **Customizable**: Easily extendable to accommodate specific use cases and model types.
+- **Memory Efficient For Local Deployment**: Unused models get unloaded from the memory after specified time of inactivity.
+- **Open WebUi Compliant**: Lists all MLX models in the HuggingFace cache, also custom models can be added
 
 ## Usage
 
@@ -288,7 +290,7 @@
 
    Please note that while streaming is available for regular text generation, the streaming implementation for function calling is still in development and does not yet fully comply with the OpenAI specification.
 
-5. **List Supported Models**
+5. **Listing Available Models**
 
    To see all vision and language models supported by MLX:
 
@@ -300,7 +302,7 @@
    print(response.json())
    ```
 
-6. **Add Available Model**
+6. **List Available Models**
 
    You can add new models to the API:
 
@@ -316,9 +318,9 @@
    print(response.json())
    ```
 
-7. **List Available Models**
+7. **Listing Available Models**
 
-   Provides the list of available models that have been added in a OpenAI compliant format:
+   To see all available models:
 
    ```python
    import requests
