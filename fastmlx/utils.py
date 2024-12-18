@@ -444,7 +444,10 @@ def lm_stream_generator(
     ):
         if stop_words and token in stop_words:
             break
-
+        # the return type of lm_stream_generate is mlx_lm.GenerationResponse, 
+        # which includes a mx.array field and will get pydantic model_dump failed.
+        token = token.text
+        
         # Update token length info
         if INCLUDE_USAGE:
             completion_tokens += 1
