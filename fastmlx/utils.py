@@ -24,6 +24,7 @@ try:
     from mlx_lm import models as lm_models
     from mlx_lm.tokenizer_utils import TokenizerWrapper
     from mlx_lm.utils import generate_step
+    from mlx_lm.sample_utils import make_sampler
     from mlx_lm.utils import stream_generate as lm_stream_generate
     from mlx_vlm import load as vlm_load
     from mlx_vlm import models as vlm_models
@@ -367,6 +368,7 @@ def lm_generate(
     tokenizer,
     prompt: str,
     max_tokens: int = 100,
+    temp: float = 0.0,
     **kwargs,
 ) -> Union[str, Generator[str, None, None]]:
     """
@@ -400,7 +402,7 @@ def lm_generate(
     detokenizer.reset()
 
     for (token, logprobs), n in zip(
-        generate_step(prompt_tokens, model, **kwargs),
+        generate_step(prompt_tokens, model, sampler=make_sampler(temp=temp), **kwargs),
         range(max_tokens),
     ):
         if token == tokenizer.eos_token_id or (
