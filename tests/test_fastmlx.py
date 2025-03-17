@@ -223,7 +223,10 @@ def test_list_models(client):
     response = client.get("/v1/models")
 
     assert response.status_code == 200
-    assert set(response.json()["models"]) == {"test_llava_model", "test_phi_model"}
+    response_data = response.json()
+    assert response_data["object"] == "list"
+    model_ids = {model["id"] for model in response_data["data"]}
+    assert model_ids == {"test_llava_model", "test_phi_model"}
 
 
 def test_add_model(client):
@@ -243,7 +246,9 @@ def test_remove_model(client):
 
     # Verify the model is added
     response = client.get("/v1/models")
-    assert "test_model" in response.json()["models"]
+    response_data = response.json()
+    model_ids = {model["id"] for model in response_data["data"]}
+    assert "test_model" in model_ids
 
     # Remove the model
     response = client.delete("/v1/models?model_name=test_model")
@@ -251,7 +256,9 @@ def test_remove_model(client):
 
     # Verify the model is removed
     response = client.get("/v1/models")
-    assert "test_model" not in response.json()["models"]
+    response_data = response.json()
+    model_ids = {model["id"] for model in response_data["data"]}
+    assert "test_model" not in model_ids
 
     # Try to remove a non-existent model
     response = client.delete("/v1/models?model_name=non_existent_model")
